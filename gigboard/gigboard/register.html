@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Create account · GigBoard KE</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="root">
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <a class="brand" href="index.html">Gig<span>Board</span> KE</a>
+        <p class="tagline muted">Create your account in a minute.</p>
+
+        <form class="card" id="register-form" novalidate>
+          <label style="margin-top:0">I want to</label>
+          <div class="role-pick">
+            <label><input type="radio" name="role" value="freelancer" checked>💼 Find work<br><span class="muted small">Freelancer</span></label>
+            <label><input type="radio" name="role" value="client">🧑‍💼 Hire talent<br><span class="muted small">Client</span></label>
+          </div>
+
+          <label for="name">Full name</label>
+          <input id="name" autocomplete="name" placeholder="e.g. Mary Wekesa">
+
+          <div class="form-row">
+            <div>
+              <label for="email">Email</label>
+              <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
+            </div>
+            <div>
+              <label for="phone">Phone</label>
+              <input id="phone" type="tel" autocomplete="tel" placeholder="07XX XXX XXX">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div>
+              <label for="password">Password</label>
+              <input id="password" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+            </div>
+            <div>
+              <label for="confirm">Confirm password</label>
+              <input id="confirm" type="password" autocomplete="new-password" placeholder="Repeat password">
+            </div>
+          </div>
+
+          <div class="error" id="error"></div>
+          <button class="btn block" type="submit">Create account</button>
+        </form>
+
+        <p class="muted small" style="text-align:center">Already registered? <a href="login.html" style="color:var(--primary);font-weight:700">Log in</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    if (me()) location.href = 'dashboard.html';
+
+    $('#register-form').addEventListener('submit', event => {
+      event.preventDefault();
+      const result = register({
+        role: $('input[name="role"]:checked').value,
+        name: $('#name').value,
+        email: $('#email').value,
+        phone: $('#phone').value,
+        password: $('#password').value,
+        confirm: $('#confirm').value
+      });
+      if (result.ok) {
+        location.href = 'dashboard.html';
+      } else {
+        $('#error').textContent = result.error;
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Nearby gigs · GigBoard KE</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="js/app.js"></script>
+  <script>
+    const user = renderShell({ freelancer: 'nearby', client: 'dashboard' }, 'Nearby gigs');
+    let selectedArea = 'All';
+
+    // Open, on-site gigs only (Remote gigs have no place on the map)
+    function onSiteGigs() { return openGigs().filter(g => g.location !== 'Remote' && AREAS[g.location]); }
+
+    function render() {
+      const gigs = onSiteGigs();
+      const pins = Object.entries(AREAS).map(([name, pos]) => {
+        const count = gigs.filter(g => g.location === name).length;
+        const cls = (name === selectedArea ? 'active' : '') + (count ? '' : ' empty-pin');
+        return `<button class="pin ${cls}" style="left:${pos.x}%;top:${pos.y}%" data-area="${esc(name)}"><b>${count}</b>${esc(name)}</button>`;
+      }).join('');
+
+      const list = gigs.filter(g => selectedArea === 'All' || g.location === selectedArea);
+
+      setView(`
+        <div class="page-head"><div><h1>Nearby gigs</h1><p class="muted">Tap an area to see gigs that need someone on site. Remote gigs are under Browse.</p></div></div>
+
+        <div class="map">
+          <svg viewBox="0 0 100 62" preserveAspectRatio="none" aria-hidden="true">
+            <g fill="none" stroke="#2a4375" stroke-width="1.4" stroke-linecap="round">
+              <path d="M52 29 L70 11 L88 0"/>
+              <path d="M52 29 L36 17 L10 0"/>
+              <path d="M52 29 L50 41 L78 41 L100 48"/>
+              <path d="M52 29 L24 52 L12 62"/>
+              <path d="M22 28 L36 38 L50 41"/>
+            </g>
+          </svg>
+          ${pins}
+        </div>
+
+        <div class="chips" style="margin-top:12px">
+          ${['All', ...Object.keys(AREAS)].map(a => `<button class="chip ${a === selectedArea ? 'active' : ''}" data-area="${esc(a)}">${esc(a)}</button>`).join('')}
+        </div>
+
+        <div class="section-title"><h2>${selectedArea === 'All' ? 'All on-site gigs' : esc(selectedArea)}</h2><span class="muted small">${list.length} gig${list.length === 1 ? '' : 's'}</span></div>
+        <div class="grid">${list.map(gigCard).join('') || emptyState('📍', 'No open gigs in this area right now.')}</div>
+      `);
+
+      $$('[data-area]').forEach(el => el.addEventListener('click', () => {
+        selectedArea = selectedArea === el.dataset.area ? 'All' : el.dataset.area;
+        render();
+      }));
+    }
+
+    if (user) render();
+  </script>
+</body>
+</html>

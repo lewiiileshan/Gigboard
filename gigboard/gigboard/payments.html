@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Payments · GigBoard KE</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="js/app.js"></script>
+  <script>
+    const user = renderShell('payments', 'Payments');
+    const isClient = user && user.role === 'client';
+
+    // One row per gig that has a hired freelancer (so a price was agreed)
+    function records() {
+      const gigs = isClient
+        ? gigsOfClient(user.id)
+        : applicationsOf(user.id).filter(a => a.status === 'accepted').map(a => getGig(a.gigId));
+      return gigs.filter(g => hiredApp(g)).map(g => ({ gig: g, amount: hiredApp(g).price }));
+    }
+
+    function markPaid(gigId) {
+      const ref = $('#ref-' + gigId).value;
+      const result = setPayment(gigId, true, ref);
+      if (result.ok) { toast('Payment recorded'); render(); } else toast(result.error, 'error');
+    }
+    function markPending(gigId) {
+      setPayment(gigId, false, '');
+      toast('Set back to pending');
+      render();
+    }
+
+    function row(r) {
+      const g = r.gig;
+      const other = isClient ? userById(hiredApp(g).freelancerId) : userById(g.clientId);
+      let status, action = '';
+
+      if (g.status === 'in_progress') {
+        status = '<span class="tag">In progress</span>';
+      } else if (g.paid) {
+        status = `<span class="tag ok">Paid${g.payRef ? ' · ' + esc(g.payRef) : ''}</span>`;
+        if (isClient) action = `<button class="btn ghost sm" onclick="markPending(${g.id})">Undo</button>`;
+      } else {
+        status = '<span class="tag warn">Pending</span>';
+        if (isClient) action = `
+          <div class="row" style="margin-top:10px;width:100%">
+            <input id="ref-${g.id}" placeholder="M-Pesa code (optional)">
+            <button class="btn sm" onclick="markPaid(${g.id})">Mark paid</button>
+          </div>`;
+      }
+
+      return `
+        <div class="card" style="padding:12px 14px">
+          <div class="row">
+            <div class="grow" style="min-width:0">
+              <a href="gig.html?id=${g.id}" style="font-weight:600">${esc(g.title)}</a>
+              <div class="muted small">${isClient ? 'To' : 'From'} ${esc(other.name)}</div>
+            </div>
+            <div style="text-align:right"><div class="price">${ksh(r.amount)}</div>${status}</div>
+          </div>
+          ${action}
+        </div>`;
+    }
+
+    function render() {
+      const list = records();
+      const paid = list.filter(r => r.gig.status === 'completed' && r.gig.paid).reduce((s, r) => s + r.amount, 0);
+      const pending = list.filter(r => r.gig.status === 'completed' && !r.gig.paid).reduce((s, r) => s + r.amount, 0);
+      const upcoming = list.filter(r => r.gig.status === 'in_progress').reduce((s, r) => s + r.amount, 0);
+
+      setView(`
+        <div class="page-head"><div><h1>Payments</h1><p class="muted">${isClient ? 'Track what you owe and have paid.' : 'Track what you have earned.'}</p></div></div>
+
+        <div class="stats" style="grid-template-columns:repeat(auto-fit,minmax(130px,1fr))">
+          <div class="stat"><div class="num">${ksh(paid)}</div><div class="lbl">${isClient ? 'Paid' : 'Received'}</div></div>
+          <div class="stat"><div class="num">${ksh(pending)}</div><div class="lbl">Pending</div></div>
+          <div class="stat"><div class="num">${ksh(upcoming)}</div><div class="lbl">In progress</div></div>
+        </div>
+
+        <p class="muted small" style="margin-bottom:12px">GigBoard records payment status only. Pay and receive money outside the app, for example by M-Pesa.</p>
+
+        ${list.map(row).join('') || emptyState('💳', 'No payments yet. They appear here after you hire or get hired.')}
+      `);
+    }
+
+    if (user) render();
+  </script>
+</body>
+</html>

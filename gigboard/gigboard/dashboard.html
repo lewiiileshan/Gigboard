@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dashboard · GigBoard KE</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="js/app.js"></script>
+  <script>
+    const user = renderShell('dashboard', 'Dashboard');
+
+    function statTile(number, label) {
+      return `<div class="stat"><div class="num">${number}</div><div class="lbl">${label}</div></div>`;
+    }
+
+    /* ---------- Freelancer dashboard ---------- */
+    function freelancerDashboard() {
+      const apps = applicationsOf(user.id);
+      const active = apps.filter(a => a.status === 'accepted' && getGig(a.gigId).status === 'in_progress');
+      const pending = apps.filter(a => a.status === 'pending');
+      const earned = apps
+        .filter(a => a.status === 'accepted' && getGig(a.gigId).paid)
+        .reduce((sum, a) => sum + a.price, 0);
+      const rating = userRating(user.id);
+
+      const recommended = openGigs().filter(g => !hasApplied(g.id, user.id)).slice(0, 4);
+
+      const recent = apps.slice(0, 4).map(a => {
+        const g = getGig(a.gigId);
+        const tag = a.status === 'pending' ? '<span class="tag warn">Pending</span>'
+          : a.status === 'rejected' ? '<span class="tag danger">Not selected</span>'
+          : statusTag(g);
+        return `
+          <a class="list-row" href="gig.html?id=${g.id}">
+            <div class="grow"><div class="title">${esc(g.title)}</div><div class="muted small">Your bid ${ksh(a.price)} · ${timeAgo(a.createdAt)}</div></div>
+            ${tag}
+          </a>`;
+      }).join('');
+
+      setView(`
+        <div class="page-head">
+          <div><h1>Hello, ${esc(user.name.split(' ')[0])} 👋</h1><p class="muted">Find your next gig today.</p></div>
+        </div>
+
+        <div class="stats">
+          ${statTile(active.length, 'Active gigs')}
+          ${statTile(pending.length, 'Pending applications')}
+          ${statTile(ksh(earned), 'Earned (paid)')}
+          ${statTile(rating.count ? rating.avg.toFixed(1) + ' ★' : '-', 'Your rating')}
+        </div>
+
+        <div class="section-title"><h2>Browse by category</h2><a href="gigs.html">See all</a></div>
+        <div class="cat-grid">
+          ${CATEGORIES.map(c => `<a class="cat-tile" href="gigs.html?cat=${encodeURIComponent(c)}"><span class="ico">${CAT_ICON[c]}</span>${esc(c)}</a>`).join('')}
+        </div>
+
+        <div class="section-title"><h2>Recommended gigs</h2><a href="gigs.html">View more</a></div>
+        <div class="grid">${recommended.map(gigCard).join('') || emptyState('🎉', 'You have applied to every open gig.')}</div>
+
+        <div class="section-title"><h2>Recent applications</h2><a href="activity.html">All activity</a></div>
+        ${recent || emptyState('📝', 'No applications yet. Browse gigs and apply.')}
+      `);
+    }
+
+    /* ---------- Client dashboard ---------- */
+    function clientDashboard() {
+      const gigs = gigsOfClient(user.id);
+      const open = gigs.filter(g => g.status === 'open');
+      const inProgress = gigs.filter(g => g.status === 'in_progress');
+      const completed = gigs.filter(g => g.status === 'completed');
+      const spent = completed.filter(g => g.paid).reduce((sum, g) => sum + hiredApp(g).price, 0);
+
+      const needAttention = open.filter(g => gigApplications(g.id).length > 0);
+      const attention = needAttention.map(g => {
+        const n = gigApplications(g.id).length;
+        return `
+          <a class="list-row" href="gig.html?id=${g.id}">
+            <div class="grow"><div class="title">${esc(g.title)}</div><div class="muted small">${n} applicant${n === 1 ? '' : 's'} waiting for your decision</div></div>
+            <span class="tag warn">Review</span>
+          </a>`;
+      }).join('');
+
+      const unpaid = completed.filter(g => !g.paid);
+      const payAlert = unpaid.length
+        ? `<a class="list-row" href="payments.html"><div class="grow"><div class="title">${unpaid.length} completed gig${unpaid.length === 1 ? '' : 's'} awaiting payment</div><div class="muted small">Mark them as paid once you have paid the freelancer.</div></div><span class="tag warn">Pending</span></a>`
+        : '';
+
+      setView(`
+        <div class="page-head">
+          <div><h1>Hello, ${esc(user.name.split(' ')[0])} 👋</h1><p class="muted">Manage your gigs and hire talent.</p></div>
+          <a class="btn sm" href="post-gig.html">➕ Post a gig</a>
+        </div>
+
+        <div class="stats">
+          ${statTile(open.length, 'Open gigs')}
+          ${statTile(inProgress.length, 'In progress')}
+          ${statTile(completed.length, 'Completed')}
+          ${statTile(ksh(spent), 'Total paid')}
+        </div>
+
+        <div class="section-title"><h2>Needs your attention</h2></div>
+        ${attention + payAlert || emptyState('✅', 'Nothing waiting. You are all caught up.')}
+
+        <div class="section-title"><h2>Your recent gigs</h2><a href="activity.html">View all</a></div>
+        <div class="grid">${gigs.slice(0, 4).map(gigCard).join('') || emptyState('📣', 'You have not posted a gig yet.')}</div>
+      `);
+    }
+
+    if (user) {
+      if (user.role === 'client') clientDashboard(); else freelancerDashboard();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Profile · GigBoard KE</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="js/app.js"></script>
+  <script>
+    const user = renderShell('profile', 'Profile');
+
+    // profile.html shows your own profile, or someone else's with ?id=3
+    const requestedId = new URLSearchParams(location.search).get('id');
+    const person = requestedId ? userById(requestedId) : user;
+    const isMe = user && person && person.id === user.id;
+    let editing = false;
+
+    function saveProfile() {
+      person.location = $('#p-location').value;
+      person.bio = $('#p-bio').value.trim();
+      if (person.role === 'freelancer') {
+        person.skills = $('#p-skills').value.split(',').map(s => s.trim()).filter(Boolean);
+        person.rate = Number($('#p-rate').value) || 0;
+      }
+      saveDB();
+      editing = false;
+      toast('Profile updated');
+      render();
+    }
+
+    function statsFor(p) {
+      if (p.role === 'client') {
+        const gigs = gigsOfClient(p.id);
+        return [[gigs.length, 'Gigs posted'], [gigs.filter(g => g.status === 'completed').length, 'Completed']];
+      }
+      const apps = applicationsOf(p.id).filter(a => a.status === 'accepted');
+      return [[apps.length, 'Jobs won'], [apps.filter(a => getGig(a.gigId).status === 'completed').length, 'Completed']];
+    }
+
+    function editForm() {
+      const f = person.role === 'freelancer';
+      return `
+        <div class="card">
+          <h3>Edit profile</h3>
+          <label for="p-location">Location</label>
+          <select id="p-location">${['Nairobi', ...Object.keys(AREAS)].map(a => `<option ${a === person.location ? 'selected' : ''}>${esc(a)}</option>`).join('')}</select>
+          <label for="p-bio">About you</label>
+          <textarea id="p-bio" placeholder="A short introduction">${esc(person.bio)}</textarea>
+          ${f ? `
+            <label for="p-skills">Skills (separated by commas)</label>
+            <input id="p-skills" value="${esc(person.skills.join(', '))}" placeholder="Logo design, Photography">
+            <label for="p-rate">Hourly rate (KSh)</label>
+            <input id="p-rate" type="number" min="0" value="${person.rate || ''}">` : ''}
+          <p style="margin-top:14px" class="row">
+            <button class="btn" onclick="saveProfile()">Save</button>
+            <button class="btn ghost" onclick="editing=false;render()">Cancel</button>
+          </p>
+        </div>`;
+    }
+
+    function render() {
+      if (!person) {
+        setView(emptyState('🤷', 'This profile does not exist.'));
+        return;
+      }
+      const rating = userRating(person.id);
+      const received = reviewsReceived(person.id);
+
+      setView(`
+        <div class="card" style="text-align:center">
+          <div class="avatar lg" style="margin:0 auto 10px">${esc(initials(person.name))}</div>
+          <h1>${esc(person.name)}</h1>
+          <p class="muted">${person.role === 'client' ? 'Client' : 'Freelancer'} · 📍 ${esc(person.location)}</p>
+          <p style="margin-top:6px">${ratingLabel(person.id)}</p>
+          ${isMe ? '<p style="margin-top:12px"><button class="btn ghost sm" onclick="editing=true;render()">Edit profile</button></p>' : ''}
+        </div>
+
+        ${isMe && editing ? editForm() : ''}
+
+        <div class="stats" style="grid-template-columns:repeat(3,1fr)">
+          ${statsFor(person).map(([n, l]) => `<div class="stat"><div class="num">${n}</div><div class="lbl">${l}</div></div>`).join('')}
+          <div class="stat"><div class="num">${rating.count ? rating.avg.toFixed(1) : '-'}</div><div class="lbl">Rating</div></div>
+        </div>
+
+        <div class="card">
+          <h3>About</h3>
+          <p class="muted">${esc(person.bio || 'No bio yet.')}</p>
+          ${person.role === 'freelancer' ? `
+            <div style="margin-top:12px">${person.skills.map(s => `<span class="tag" style="margin:0 6px 6px 0">${esc(s)}</span>`).join('') || '<span class="muted small">No skills added.</span>'}</div>
+            ${person.rate ? `<p style="margin-top:8px">Rate: <b>${ksh(person.rate)}</b> per hour</p>` : ''}` : ''}
+          <p class="muted small" style="margin-top:12px">Member since ${new Date(person.createdAt).toLocaleDateString('en-KE', { month: 'long', year: 'numeric' })}</p>
+        </div>
+
+        <div class="section-title"><h2>Reviews (${received.length})</h2></div>
+        ${received.map(r => `
+          <div class="card">
+            <div class="row"><b>${esc(userById(r.reviewerId).name)}</b><span class="stars">${stars(r.rating)}</span></div>
+            <p class="muted" style="margin-top:6px">${esc(r.comment || 'No comment.')}</p>
+            <p class="muted small" style="margin-top:6px">${esc(getGig(r.gigId).title)}</p>
+          </div>`).join('') || emptyState('⭐', 'No reviews yet.')}
+
+        ${isMe ? `
+          <div class="section-title"><h2>Quick links</h2></div>
+          <a class="list-row" href="payments.html"><span>💳</span><div class="grow">Payments</div><span class="muted">›</span></a>
+          <a class="list-row" href="settings.html"><span>⚙️</span><div class="grow">Settings</div><span class="muted">›</span></a>
+          <a class="list-row" href="#" onclick="logout();return false;"><span>🚪</span><div class="grow">Log out</div><span class="muted">›</span></a>` : ''}
+      `);
+    }
+
+    if (user) render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Activity · GigBoard KE</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="js/app.js"></script>
+  <script>
+    const user = renderShell('activity', 'Activity');
+    const TABS = [['all', 'All'], ['pending', 'Pending'], ['active', 'In progress'], ['completed', 'Completed']];
+    let tab = 'all';
+
+    /*
+      Both roles are turned into the same simple shape so one list can show them:
+      { gig, key, tag, sub, time }
+      key is one of: pending | active | completed | rejected
+    */
+    function items() {
+      if (user.role === 'client') {
+        return gigsOfClient(user.id).map(g => {
+          const n = gigApplications(g.id).length;
+          return {
+            gig: g,
+            key: g.status === 'open' ? 'pending' : g.status === 'in_progress' ? 'active' : 'completed',
+            tag: statusTag(g),
+            sub: g.status === 'open' ? `${n} applicant${n === 1 ? '' : 's'}` : `Hired: ${esc(userById(hiredApp(g).freelancerId).name)}`,
+            time: g.createdAt
+          };
+        });
+      }
+      return applicationsOf(user.id).map(a => {
+        const g = getGig(a.gigId);
+        let key = 'active';
+        let tag = statusTag(g);
+        if (a.status === 'pending') { key = 'pending'; tag = '<span class="tag warn">Pending</span>'; }
+        else if (a.status === 'rejected') { key = 'rejected'; tag = '<span class="tag danger">Not selected</span>'; }
+        else if (g.status === 'completed') key = 'completed';
+        return { gig: g, key, tag, sub: `Your bid ${ksh(a.price)}`, time: a.createdAt };
+      });
+    }
+
+    function render() {
+      const all = items();
+      const shown = all.filter(i => tab === 'all' || i.key === tab);
+
+      setView(`
+        <div class="page-head">
+          <div><h1>${user.role === 'client' ? 'My gigs' : 'My activity'}</h1><p class="muted">${user.role === 'client' ? 'Everything you have posted.' : 'Your applications and jobs.'}</p></div>
+          ${user.role === 'client' ? '<a class="btn sm" href="post-gig.html">➕ Post</a>' : ''}
+        </div>
+
+        <div class="chips">
+          ${TABS.map(([key, label]) => {
+            const n = key === 'all' ? all.length : all.filter(i => i.key === key).length;
+            return `<button class="chip ${tab === key ? 'active' : ''}" data-tab="${key}">${label} (${n})</button>`;
+          }).join('')}
+        </div>
+
+        ${shown.map(i => `
+          <a class="list-row" href="gig.html?id=${i.gig.id}">
+            <div class="avatar">${CAT_ICON[i.gig.category] || '📄'}</div>
+            <div class="grow">
+              <div class="title">${esc(i.gig.title)}</div>
+              <div class="muted small">${i.sub} · ${timeAgo(i.time)}</div>
+            </div>
+            ${i.tag}
+          </a>`).join('') || emptyState('📭', 'Nothing here yet.')}
+      `);
+
+      $$('[data-tab]').forEach(btn => btn.addEventListener('click', () => { tab = btn.dataset.tab; render(); }));
+    }
+
+    if (user) render();
+  </script>
+</body>
+</html>

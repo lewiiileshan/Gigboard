@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Browse gigs · GigBoard KE</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="js/app.js"></script>
+  <script>
+    const user = renderShell({ freelancer: 'gigs', client: 'dashboard' }, 'Browse gigs');
+
+    // Filter state. ?cat=Data%20Entry in the address bar pre-selects a category.
+    const params = new URLSearchParams(location.search);
+    const filters = { q: '', cat: params.get('cat') || 'All', location: 'All', sort: 'new' };
+
+    function visibleGigs() {
+      const words = filters.q.toLowerCase();
+      let list = openGigs().filter(g =>
+        (filters.cat === 'All' || g.category === filters.cat) &&
+        (filters.location === 'All' || g.location === filters.location) &&
+        (g.title + ' ' + g.desc + ' ' + g.location).toLowerCase().includes(words)
+      );
+      if (filters.sort === 'high') list.sort((a, b) => b.budget - a.budget);
+      if (filters.sort === 'low') list.sort((a, b) => a.budget - b.budget);
+      return list;
+    }
+
+    // Only the results are redrawn, so the search box keeps focus while typing.
+    function renderResults() {
+      const list = visibleGigs();
+      $('#count').textContent = list.length + (list.length === 1 ? ' gig' : ' gigs');
+      $('#results').innerHTML = list.map(gigCard).join('') || emptyState('🔍', 'No gigs match your search.');
+    }
+
+    function renderChips() {
+      $('#chips').innerHTML = ['All', ...CATEGORIES].map(c =>
+        `<button class="chip ${filters.cat === c ? 'active' : ''}" data-cat="${esc(c)}">${c === 'All' ? '' : CAT_ICON[c] + ' '}${esc(c)}</button>`
+      ).join('');
+      $$('#chips .chip').forEach(btn => btn.addEventListener('click', () => {
+        filters.cat = btn.dataset.cat;
+        renderChips();
+        renderResults();
+      }));
+    }
+
+    if (user) {
+      const locations = ['All', 'Remote', ...Object.keys(AREAS)];
+      setView(`
+        <div class="page-head"><div><h1>Browse gigs</h1><p class="muted" id="count"></p></div></div>
+
+        <input id="search" type="search" placeholder="Search gigs, skills or places">
+        <div class="chips" id="chips" style="margin-top:10px"></div>
+
+        <div class="form-row" style="margin-bottom:12px">
+          <div>
+            <label for="loc" style="margin-top:4px">Location</label>
+            <select id="loc">${locations.map(l => `<option>${l}</option>`).join('')}</select>
+          </div>
+          <div>
+            <label for="sort" style="margin-top:4px">Sort by</label>
+            <select id="sort">
+              <option value="new">Newest</option>
+              <option value="high">Budget: high to low</option>
+              <option value="low">Budget: low to high</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="grid" id="results"></div>
+      `);
+
+      $('#search').addEventListener('input', e => { filters.q = e.target.value; renderResults(); });
+      $('#loc').addEventListener('change', e => { filters.location = e.target.value; renderResults(); });
+      $('#sort').addEventListener('change', e => { filters.sort = e.target.value; renderResults(); });
+      renderChips();
+      renderResults();
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Log in · GigBoard KE</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="root">
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <a class="brand" href="index.html">Gig<span>Board</span> KE</a>
+        <p class="tagline muted">Welcome back. Log in to continue.</p>
+
+        <form class="card" id="login-form" novalidate>
+          <label for="email">Email</label>
+          <input id="email" type="email" autocomplete="email" placeholder="you@example.com">
+
+          <label for="password">Password</label>
+          <input id="password" type="password" autocomplete="current-password" placeholder="Your password">
+
+          <div class="error" id="error"></div>
+          <button class="btn block" type="submit">Log in</button>
+
+          <div class="demo-box">
+            <p class="muted small" style="margin-bottom:8px">Demo accounts (password: demo1234)</p>
+            <div class="row">
+              <button class="btn ghost sm" type="button" data-email="client@demo.com">Demo client</button>
+              <button class="btn ghost sm" type="button" data-email="freelancer@demo.com">Demo freelancer</button>
+            </div>
+          </div>
+        </form>
+
+        <p class="muted small" style="text-align:center">New here? <a href="register.html" style="color:var(--primary);font-weight:700">Create an account</a></p>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/app.js"></script>
+  <script>
+    // Already logged in? Skip straight to the dashboard.
+    if (me()) location.href = 'dashboard.html';
+
+    function attemptLogin(email, password) {
+      const result = login(email, password);
+      if (result.ok) {
+        location.href = 'dashboard.html';
+      } else {
+        $('#error').textContent = result.error;
+      }
+    }
+
+    $('#login-form').addEventListener('submit', event => {
+      event.preventDefault();               // stop the browser reloading the page
+      attemptLogin($('#email').value, $('#password').value);
+    });
+
+    // The demo buttons log in with one click
+    $$('[data-email]').forEach(button => {
+      button.addEventListener('click', () => attemptLogin(button.dataset.email, 'demo1234'));
+    });
+  </script>
+</body>
+</html>

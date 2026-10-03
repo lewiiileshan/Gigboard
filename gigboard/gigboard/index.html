@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>GigBoard KE · Find gigs. Hire local talent.</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="js/app.js"></script>
+  <script>
+    // Landing page: public, so it does not use renderShell().
+    const user = me();
+
+    const categoryTiles = CATEGORIES.map(c => `
+      <a class="cat-tile" href="${user ? 'gigs.html?cat=' + encodeURIComponent(c) : 'register.html'}">
+        <span class="ico">${CAT_ICON[c]}</span>${esc(c)}
+      </a>`).join('');
+
+    $('#root').innerHTML = `
+      <div class="landing">
+        <div class="landing-nav">
+          <span class="brand">Gig<span>Board</span> KE</span>
+          ${user
+            ? '<a class="btn sm" href="dashboard.html">Go to dashboard</a>'
+            : '<a class="btn sm ghost" href="login.html">Log in</a>'}
+        </div>
+
+        <section class="hero">
+          <h1>Find quick gigs.<br>Hire local talent.</h1>
+          <p>GigBoard KE connects Kenyans who need a job done with freelancers ready to do it, from logo design to same-day deliveries.</p>
+          <div class="actions">
+            <a class="btn" href="register.html">Get started</a>
+            <a class="btn ghost" href="login.html">I have an account</a>
+          </div>
+        </section>
+
+        <div class="section-title"><h2>Popular categories</h2></div>
+        <div class="cat-grid">${categoryTiles}</div>
+
+        <div class="section-title"><h2>How it works</h2></div>
+        <div class="steps">
+          <div class="card step"><div class="num">1</div><h3>Post a gig</h3><p class="muted small">Describe the work, set a budget in KSh and pick a location or remote.</p></div>
+          <div class="card step"><div class="num">2</div><h3>Choose a freelancer</h3><p class="muted small">Compare proposals, prices and ratings, then hire the best fit.</p></div>
+          <div class="card step"><div class="num">3</div><h3>Complete and review</h3><p class="muted small">Track payment status and leave a review once the work is done.</p></div>
+        </div>
+      </div>`;
+  </script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GigBoard KE</title>
+<style>
+:root{--bg:#0a1224;--card:#111d38;--tx:#e8eefc;--mu:#8fa0c4;--pr:#4f8cff;--pr2:#16294d;--bd:#1f3157;--wa:#e5a53a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.app{max-width:560px;margin:0 auto;padding:0 14px 90px}
+header{display:flex;justify-content:space-between;align-items:center;padding:14px 0}
+h1{font-size:20px;margin:0}h1 span{color:var(--pr)}
+.sw{display:flex;background:var(--card);border:1px solid var(--bd);border-radius:20px;padding:2px}
+.sw button{border:0;background:none;color:var(--mu);padding:6px 12px;border-radius:18px;font:inherit;font-size:13px}
+.sw button.on{background:var(--pr);color:#fff}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin:10px 0}
+.row{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+.t{font-weight:600}.m{color:var(--mu);font-size:13px}.p{color:var(--pr);font-weight:700;white-space:nowrap}
+.chips{display:flex;gap:6px;overflow-x:auto;padding:4px 0}
+.chip{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:16px;padding:5px 12px;font:inherit;font-size:13px;white-space:nowrap}
+.chip.on{background:var(--pr2);border-color:var(--pr);color:var(--pr)}
+input,textarea,select{width:100%;padding:10px;margin:4px 0;border:1px solid var(--bd);border-radius:10px;background:var(--card);color:var(--tx);font:inherit}
+.btn{border:0;background:var(--pr);color:#fff;padding:9px 14px;border-radius:10px;font:inherit;font-weight:600}
+.btn.o{background:none;color:var(--pr);border:1px solid var(--pr)}
+.tag{font-size:12px;padding:2px 8px;border-radius:10px;background:var(--pr2);color:var(--pr)}
+.tag.w{background:transparent;border:1px solid var(--wa);color:var(--wa)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--bd);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px)}
+nav div{display:flex;width:100%;max-width:560px}
+nav button{flex:1;border:0;background:none;color:var(--mu);padding:12px 4px;font:inherit;font-size:13px}
+nav button.on{color:var(--pr);font-weight:700}
+.st{color:#e5a53a;letter-spacing:2px}.rate button{border:0;background:none;font-size:22px;color:var(--wa)}
+.empty{text-align:center;color:var(--mu);padding:30px 0}
+</style></head><body><div class="app" id="app"></div>
+<script>
+const CATS=['Graphic Design','Writing & Translation','Data Entry','Photo & Video','Web & Software','Social Media','Errands & Delivery'];
+let S={user:null,role:'freelancer',tab:'browse',cat:'All',q:'',open:null,nid:10,
+gigs:[
+{id:1,title:'Logo for a Kilimani cafe',cat:'Graphic Design',desc:'Simple modern logo, 2 revisions.',budget:3500,loc:'Nairobi',owner:'Wanjiru K.',status:'open',apps:[],paid:false},
+{id:2,title:'Translate flyer: English to Swahili',cat:'Writing & Translation',desc:'One page, due in 3 days.',budget:1200,loc:'Remote',owner:'Brian O.',status:'open',apps:[],paid:false},
+{id:3,title:'Enter 200 survey forms into Excel',cat:'Data Entry',desc:'Scanned forms provided.',budget:2500,loc:'Remote',owner:'Kevin M.',status:'open',apps:[],paid:false},
+{id:4,title:'Product photos for 15 items',cat:'Photo & Video',desc:'Clothing, white background.',budget:4000,loc:'Westlands',owner:'Faith N.',status:'open',apps:[],paid:false},
+{id:5,title:'Deliver documents to Upper Hill',cat:'Errands & Delivery',desc:'Same day, 2 envelopes.',budget:600,loc:'Nairobi',owner:'Dennis A.',status:'open',apps:[],paid:false},
+{id:6,title:'Landing page for salon',cat:'Web & Software',desc:'One page, mobile friendly.',budget:8000,loc:'Remote',owner:'You',status:'open',paid:false,
+ apps:[{n:'Grace W.',price:7500,note:'3 years building small business sites.',hired:false},{n:'Ian T.',price:6800,note:'Can finish in 4 days.',hired:false}]}
+]};
+const $=s=>document.getElementById(s),esc=t=>String(t).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ksh=n=>'KSh '+Number(n).toLocaleString();
+const G=id=>S.gigs.find(g=>g.id==id);
+function go(t){S.tab=t;S.open=null;render()}
+function setRole(r){S.role=r;S.tab=r=='client'?'mine':'browse';S.open=null;render()}
+function tog(id){S.open=S.open==id?null:id;render()}
+function apply(id){const p=+$('pr'+id).value,n=$('nt'+id).value.trim();if(!p||!n){alert('Add a price and a short proposal.');return}
+ G(id).apps.push({n:'You',price:p,note:n,hired:false});S.open=null;render()}
+function hire(id,i){const g=G(id);g.apps[i].hired=true;g.status='hired';render()}
+function done(id){G(id).status='done';render()}
+function pay(id){G(id).paid=!G(id).paid;render()}
+function rate(id,v){const g=G(id);g.rating=v;g.theirs=5;render()}
+function signup(){const n=$('sn').value.trim();if(!n){alert('Enter your name.');return}S.user=n;S.role=$('sr').value;S.tab=S.role=='client'?'mine':'browse';try{localStorage.setItem('gb_user',n)}catch(e){}render()}
+function logout(){S.user=null;try{localStorage.removeItem('gb_user')}catch(e){}render()}
+function post(){const t=$('pt').value.trim(),b=+$('pb').value;if(!t||!b){alert('Add a title and budget.');return}
+ S.gigs.unshift({id:S.nid++,title:t,cat:$('pc').value,desc:$('pd').value.trim()||'No description.',budget:b,loc:$('pl').value.trim()||'Remote',owner:'You',status:'open',apps:[],paid:false});
+ S.tab='mine';render()}
+const stars=n=>'★'.repeat(n)+'☆'.repeat(5-n);
+const rateUI=g=>g.rating?`<div class="m">Your rating: <span class="st">${stars(g.rating)}</span><br>Their review of you (revealed after both submit): <span class="st">${stars(g.theirs)}</span></div>`:`<div class="rate m">Rate: ${[1,2,3,4,5].map(v=>`<button onclick="rate(${g.id},${v})">☆</button>`).join('')}</div>`;
+function browse(){
+ const L=S.gigs.filter(g=>g.owner!='You'&&g.status=='open'&&(S.cat=='All'||g.cat==S.cat)&&(g.title+g.desc+g.loc).toLowerCase().includes(S.q.toLowerCase()));
+ return `<input placeholder="Search gigs or location" value="${esc(S.q)}" oninput="S.q=this.value;render(true)">
+ <div class="chips">${['All',...CATS].map(c=>`<button class="chip ${S.cat==c?'on':''}" onclick="S.cat='${c.replace("'","")}';render()">${c}</button>`).join('')}</div>
+ ${L.map(g=>{const ap=g.apps.some(a=>a.n=='You');return `<div class="card"><div class="row"><div><div class="t">${esc(g.title)}</div><div class="m">${esc(g.owner)} · ${esc(g.loc)}</div></div><div class="p">${ksh(g.budget)}</div></div>
+ <p class="m" style="margin:8px 0">${esc(g.desc)}</p><div class="row"><span class="tag">${g.cat}</span>${ap?'<span class="tag w">Applied</span>':`<button class="btn" onclick="tog(${g.id})">${S.open==g.id?'Close':'Apply'}</button>`}</div>
+ ${S.open==g.id?`<input id="pr${g.id}" type="number" placeholder="Your price (KSh)" value="${g.budget}"><textarea id="nt${g.id}" rows="2" placeholder="Short proposal"></textarea><button class="btn" onclick="apply(${g.id})">Send application</button>`:''}</div>`}).join('')||'<div class="empty">No gigs match.</div>'}`}
+function apps(){
+ const L=S.gigs.filter(g=>g.owner!='You'&&g.apps.some(a=>a.n=='You'));
+ return L.map(g=>{const a=g.apps.find(a=>a.n=='You');return `<div class="card"><div class="row"><div class="t">${esc(g.title)}</div><span class="tag ${a.hired?'':'w'}">${a.hired?'Hired':'Pending'}</span></div>
+ <div class="m">Your bid ${ksh(a.price)} · ${esc(g.owner)}</div></div>`}).join('')||'<div class="empty">You have not applied to any gigs yet.</div>'}
+function mine(){
+ const L=S.gigs.filter(g=>g.owner=='You');
+ return L.map(g=>`<div class="card"><div class="row"><div><div class="t">${esc(g.title)}</div><div class="m">${g.cat} · ${esc(g.loc)}</div></div><div class="p">${ksh(g.budget)}</div></div>
+ <div style="margin:8px 0"><span class="tag ${g.status=='open'?'w':''}">${g.status=='open'?'Open':g.status=='hired'?'In progress':'Completed'}</span></div>
+ ${g.status=='open'?(g.apps.length?g.apps.map((a,i)=>`<div class="card" style="margin:6px 0"><div class="row"><div><div class="t">${esc(a.n)}</div><div class="m">${esc(a.note)}</div></div><div class="p">${ksh(a.price)}</div></div><button class="btn" style="margin-top:8px" onclick="hire(${g.id},${i})">Hire</button></div>`).join(''):'<div class="m">No applications yet.</div>')
+ :`<div class="m">Freelancer: ${esc(g.apps.find(a=>a.hired).n)} · Agreed ${ksh(g.apps.find(a=>a.hired).price)}</div>
+ ${g.status=='hired'?`<button class="btn" style="margin-top:8px" onclick="done(${g.id})">Mark as complete</button>`:`<div class="row" style="margin:8px 0;align-items:center"><span class="m">Payment: <b>${g.paid?'Paid':'Pending'}</b></span><button class="btn o" onclick="pay(${g.id})">Mark ${g.paid?'pending':'paid'}</button></div>${rateUI(g)}`}`}</div>`).join('')||'<div class="empty">You have not posted any gigs.</div>'}
+function postv(){return `<div class="card"><div class="t">Post a gig</div><input id="pt" placeholder="Gig title"><select id="pc">${CATS.map(c=>`<option>${c}</option>`).join('')}</select>
+ <textarea id="pd" rows="3" placeholder="Describe the work"></textarea><input id="pb" type="number" placeholder="Budget (KSh)"><input id="pl" placeholder="Location (e.g. Nairobi or Remote)"><button class="btn" onclick="post()">Post gig</button></div>`}
+function prof(){const f=S.role=='freelancer',mg=S.gigs.filter(g=>g.owner=='You'),dn=mg.filter(g=>g.status=='done');return `<div class="card"><div class="t">${esc(S.user)}</div><div class="m">${f?'Freelancer':'Client'} · Nairobi, Kenya</div>
+ <p class="m">${f?'Add skills, portfolio links and your rate so clients can compare you.':'Verified clients get more applications. Rate freelancers after each gig.'}</p>
+ <div class="m">Gigs ${f?'applied':'posted'}: <b>${f?S.gigs.filter(g=>g.apps.some(a=>a.n=='You')&&g.owner!='You').length:S.gigs.filter(g=>g.owner=='You').length}</b></div>
+ ${f?'':`<div class="m">Completed: <b>${dn.length}</b> · Paid out: <b>${ksh(dn.filter(g=>g.paid).reduce((a,g)=>a+g.apps.find(x=>x.hired).price,0))}</b></div>`}<button class="btn o" style="margin-top:8px" onclick="logout()">Log out</button><div class="m" style="margin-top:6px">Payments are tracked only (pending or paid). Pay outside the app, for example by M-Pesa, until integration is added.</div></div>`}
+function render(keep){
+ if(!S.user){$('app').innerHTML=`<header><h1>Gig<span>Board</span> KE</h1></header><div class="card"><div class="t">Create your account</div><p class="m">Find short gigs or hire local talent across Kenya.</p><input id="sn" placeholder="Full name"><select id="sr"><option value="freelancer">I want to find work (Freelancer)</option><option value="client">I want to hire (Client)</option></select><button class="btn" onclick="signup()">Get started</button></div>`;return}
+ const c=S.role=='client',T=c?[['mine','My Gigs'],['post','Post Gig'],['prof','Profile']]:[['browse','Browse'],['apps','Applications'],['prof','Profile']];
+ const V={browse,apps,mine,post:postv,prof}[S.tab]();
+ $('app').innerHTML=`<header><h1>Gig<span>Board</span> KE</h1><div class="sw"><button class="${c?'':'on'}" onclick="setRole('freelancer')">Freelancer</button><button class="${c?'on':''}" onclick="setRole('client')">Client</button></div></header>${V}
+ <nav><div>${T.map(([k,l])=>`<button class="${S.tab==k?'on':''}" onclick="go('${k}')">${l}</button>`).join('')}</div></nav>`;
+ if(keep){const i=document.querySelector('input');i.focus();i.setSelectionRange(i.value.length,i.value.length)}}
+try{S.user=localStorage.getItem('gb_user')}catch(e){}
+render();
+</script></body></html>
