@@ -6,6 +6,7 @@ $isClient = $user && $user['role'] === 'client';
 // Tabs shown at the bottom of the phone screen and, as text links, at the top on a laptop.
 $tabs = [['dashboard', 'Home', '/dashboard', 'home'], ['gigs', 'Gigs', '/gigs', 'search']];
 if ($isClient) $tabs[] = ['mine', 'My gigs', '/my-gigs', 'briefcase'];
+if (!$isClient) $tabs[] = ['applied', 'Applied', '/my-applications', 'briefcase'];
 $tabs[] = ['account', 'Account', '/account', 'user'];
 $activeTab = $nav === 'post' ? 'mine' : $nav;      // the "post a gig" page belongs under My gigs
 ?>

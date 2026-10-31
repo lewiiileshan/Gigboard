@@ -25,7 +25,15 @@
         <button class="btn danger" type="submit">Cancel gig</button>
       </form>
     </div>
-  <?php elseif ($user['role'] === 'freelancer' && $gig['status'] === 'open'): ?>
-    <p class="muted small" style="margin-top:16px">Applying for gigs arrives in the next build step.</p>
   <?php endif; ?>
 </div>
+
+<?php if ($isOwner && $gig['status'] === 'open'): ?>
+  <?php require __DIR__ . '/_applicants.php'; ?>
+<?php elseif (!$isOwner && $user['role'] === 'freelancer' && ($gig['status'] === 'open' || $myApplication)): ?>
+  <?php require __DIR__ . '/_apply.php'; ?>
+<?php endif; ?>
+
+<?php if ($hired && ($isOwner || $isHired)): ?>
+  <?php require __DIR__ . '/_delivery.php'; ?>
+<?php endif; ?>

@@ -55,3 +55,21 @@ bcrypt password hashes, session id regenerated on login and logout, role guard `
 - **App**: a light theme with a navy brand. On a phone you get a bottom tab bar (Home, Gigs, My gigs, Account); on a laptop the same tabs sit at the top.
 - **Account** tab (`/account`): your details and the Log out button.
 - It is one responsive web app: open it on a phone or a laptop. Tests: `bash tests/smoke.sh` and `bash tests/gigs_test.sh`.
+
+## Step 3: applying, hiring and private work delivery
+
+1. A **freelancer** opens an open gig and sends an application (proposal + price). One application per gig.
+2. The **client** sees all applicants on the gig page and presses **Hire**. That accepts one application, declines the rest, moves the gig to *In progress* and records the agreed price as a pending payment.
+3. Only the **hired freelancer** can upload the finished work (PDF, Office files, TXT, CSV, PNG, JPG or ZIP, up to 10 MB).
+4. Only the **gig's client** (and the freelancer who uploaded) can download it. Anyone else gets a "not found" page.
+5. The client **approves** the work (gig becomes *Completed*) or **requests changes** with feedback; the freelancer then uploads a new version.
+
+How the files are kept private:
+- Saved in `storage/deliveries/`, outside `public/`, under a random name with no extension. There is no URL to the file.
+- `storage/.htaccess` also blocks direct web access if someone points Apache at the project folder.
+- `SubmissionController::download()` checks who is asking, then sends the file as a forced download with `nosniff`.
+- File type is checked twice: by extension (whitelist) and by the file's real content.
+
+On XAMPP, the default PHP upload limit (`upload_max_filesize`, 40M) is higher than the app's 10 MB limit, so no change is needed.
+
+Tests: `bash tests/delivery_test.sh` (51 checks) alongside `smoke.sh` and `gigs_test.sh`.

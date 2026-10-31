@@ -1,2 +1,4 @@
 .DS_Store
 *.sqlite
+storage/deliveries/*
+!storage/deliveries/.gitkeep

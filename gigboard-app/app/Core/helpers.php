@@ -74,3 +74,11 @@ function logo_tile(string $size = ''): string
 {
     return '<span class="logo-tile ' . e($size) . '"><span class="disc">' . icon('briefcase') . '</span></span>';
 }
+
+/** 2411724 -> "2.3 MB" */
+function format_bytes(int $bytes): string
+{
+    if ($bytes >= 1048576) return round($bytes / 1048576, 1) . ' MB';
+    if ($bytes >= 1024)    return round($bytes / 1024) . ' KB';
+    return $bytes . ' B';
+}

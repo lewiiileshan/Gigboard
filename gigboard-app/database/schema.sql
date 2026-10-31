@@ -62,6 +62,24 @@ CREATE TABLE payments (                          -- tracking only, no processing
   FOREIGN KEY (gig_id) REFERENCES gigs(id) ON DELETE CASCADE
 );
 
+CREATE TABLE submissions (                       -- work delivered by the hired freelancer (private files)
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  gig_id INT NOT NULL,
+  freelancer_id INT NOT NULL,
+  note TEXT,                                     -- message to the client
+  original_name VARCHAR(150) NOT NULL,           -- name shown to the user
+  stored_name CHAR(32) NOT NULL UNIQUE,          -- random name on disk (storage/deliveries/), never a URL
+  mime VARCHAR(100) NOT NULL,
+  size_bytes INT NOT NULL,
+  status ENUM('submitted','approved','changes_requested') DEFAULT 'submitted',
+  client_feedback TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at TIMESTAMP NULL,
+  FOREIGN KEY (gig_id) REFERENCES gigs(id) ON DELETE CASCADE,
+  FOREIGN KEY (freelancer_id) REFERENCES users(id),
+  INDEX (gig_id)
+);
+
 CREATE TABLE reviews (                           -- two-way, revealed when both submitted
   id INT AUTO_INCREMENT PRIMARY KEY,
   gig_id INT NOT NULL,

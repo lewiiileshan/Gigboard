@@ -2,7 +2,7 @@
 namespace App\Controllers;
 
 use App\Core\{Auth, Session, Url, View};
-use App\Models\{Category, Gig};
+use App\Models\{Application, Category, Gig, Submission};
 
 /**
  * Gigs: browse and search (UC05), view, post (UC04), edit and cancel (FR08).
@@ -48,17 +48,26 @@ class GigController
         $user = Auth::requireLogin();
         $gig  = Gig::find($id) ?? abort(404, 'Gig not found');
 
-        // Only the owner may see their own gig once it is no longer open to the public.
-        if ($gig['status'] !== 'open' && (int) $gig['client_id'] !== (int) $user['id']) {
+        $isOwner = (int) $gig['client_id'] === (int) $user['id'];
+        $hired   = Application::accepted($id);
+        $isHired = $hired && (int) $hired['freelancer_id'] === (int) $user['id'];
+
+        // Once a gig is no longer open to the public, only its client and the hired freelancer may see it.
+        if ($gig['status'] !== 'open' && !$isOwner && !$isHired) {
             abort(404, 'Gig not found');
         }
 
         View::render('gigs/show', [
-            'title'   => $gig['title'],
-            'nav'     => 'gigs',
-            'gig'     => $gig,
-            'isOwner' => (int) $gig['client_id'] === (int) $user['id'],
-            'user'    => $user,
+            'title'        => $gig['title'],
+            'nav'          => $isOwner ? 'mine' : ($user['role'] === 'freelancer' && $isHired ? 'applied' : 'gigs'),
+            'gig'          => $gig,
+            'isOwner'      => $isOwner,
+            'isHired'      => $isHired,
+            'hired'        => $hired,
+            'user'         => $user,
+            'applications' => $isOwner ? Application::forGig($id) : [],
+            'myApplication'=> $user['role'] === 'freelancer' ? Application::mineFor($id, (int) $user['id']) : null,
+            'submissions'  => ($isOwner || $isHired) ? Submission::forGig($id) : [],
         ]);
     }
 

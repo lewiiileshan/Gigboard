@@ -224,3 +224,8 @@ footer.site-footer { text-align: center; color: var(--muted); padding: 36px 16px
 
 /* push the little arrow to the right edge of menu rows */
 .menu a .ic:last-child { margin-left: auto; color: var(--muted); }
+
+/* applications and delivery */
+.section-title { margin: 22px 2px 10px; font-size: 16px; }
+.file-name { overflow-wrap: anywhere; }
+input[type=file] { padding: 10px; background: var(--card); }
