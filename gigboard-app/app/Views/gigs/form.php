@@ -19,6 +19,9 @@
   <label for="description">Description</label>
   <textarea id="description" name="description" rows="6" placeholder="What needs to be done? Include sizes, formats, and anything the freelancer should know."><?= e(old('description', $gig['description'] ?? '')) ?></textarea>
 
+  <label for="requirements">Requirements for applicants (optional)</label>
+  <textarea id="requirements" name="requirements" rows="4" maxlength="1500" placeholder="e.g. Diploma in graphic design, 2+ years of experience, a portfolio of logo work. Applicants will upload proof."><?= e(old('requirements', $gig['requirements'] ?? '')) ?></textarea>
+
   <div class="form-row">
     <div>
       <label for="budget">Budget (KES)</label>

@@ -29,6 +29,7 @@ CREATE TABLE gigs (
   category_id INT NOT NULL,
   title VARCHAR(150) NOT NULL,
   description TEXT NOT NULL,
+  requirements TEXT,                            -- what an applicant must have (set by the client)
   budget DECIMAL(10,2) NOT NULL,                -- KES
   location VARCHAR(100) DEFAULT 'Remote',
   deadline DATE,
@@ -50,6 +51,21 @@ CREATE TABLE applications (
   UNIQUE (gig_id, freelancer_id),               -- one application per gig
   FOREIGN KEY (gig_id) REFERENCES gigs(id) ON DELETE CASCADE,
   FOREIGN KEY (freelancer_id) REFERENCES users(id)
+);
+
+CREATE TABLE application_files (                -- qualification proof attached to an application (private files)
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  application_id INT NOT NULL,
+  freelancer_id INT NOT NULL,
+  title VARCHAR(80) NOT NULL,                    -- e.g. "Diploma in Graphic Design"
+  original_name VARCHAR(150) NOT NULL,
+  stored_name CHAR(32) NOT NULL UNIQUE,          -- random name in storage/deliveries/, never a URL
+  mime VARCHAR(100) NOT NULL,
+  size_bytes INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE,
+  FOREIGN KEY (freelancer_id) REFERENCES users(id),
+  INDEX (application_id)
 );
 
 CREATE TABLE payments (                          -- tracking only, no processing

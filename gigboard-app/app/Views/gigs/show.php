@@ -16,6 +16,11 @@
   <h3>Description</h3>
   <p class="desc"><?= e($gig['description']) ?></p>
 
+  <?php if (!empty($gig['requirements'])): ?>
+    <h3 style="margin-top:18px">Requirements</h3>
+    <p class="desc"><?= e($gig['requirements']) ?></p>
+  <?php endif; ?>
+
   <?php if ($isOwner && $gig['status'] === 'open'): ?>
     <div class="row" style="justify-content:flex-start;gap:10px;margin-top:16px">
       <a class="btn" href="<?= url('/gigs/' . (int) $gig['id'] . '/edit') ?>">Edit gig</a>

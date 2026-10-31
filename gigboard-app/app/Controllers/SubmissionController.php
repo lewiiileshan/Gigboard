@@ -57,18 +57,7 @@ class SubmissionController
         $isUploader   = (int) $sub['freelancer_id'] === (int) $user['id'];
         if (!$isClient && !$isUploader) abort(404, 'File not found');
 
-        $path = FileStore::path($sub['stored_name']);
-        if ($path === null || !is_file($path)) abort(404, 'File not found');
-
-        // Always a download, never shown inside the site, and never guessed as a web page by the browser.
-        $name = str_replace(['"', "\r", "\n"], '_', $sub['original_name']);
-        header('Content-Type: application/octet-stream');
-        header('Content-Length: ' . filesize($path));
-        header('Content-Disposition: attachment; filename="' . $name . '"; filename*=UTF-8\'\'' . rawurlencode($sub['original_name']));
-        header('X-Content-Type-Options: nosniff');
-        header('Cache-Control: private, no-store');
-        readfile($path);
-        exit;
+        FileStore::send($sub);
     }
 
     /** POST /submissions/{id}/approve */

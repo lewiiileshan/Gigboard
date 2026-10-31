@@ -35,9 +35,9 @@ class Gig
     public static function create(int $clientId, array $d): int
     {
         Database::run(
-            'INSERT INTO gigs (client_id, category_id, title, description, budget, location, deadline)
-             VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [$clientId, $d['category_id'], $d['title'], $d['description'], $d['budget'], $d['location'], $d['deadline']]
+            'INSERT INTO gigs (client_id, category_id, title, description, requirements, budget, location, deadline)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [$clientId, $d['category_id'], $d['title'], $d['description'], $d['requirements'], $d['budget'], $d['location'], $d['deadline']]
         );
         return Database::lastId();
     }
@@ -51,9 +51,9 @@ class Gig
     public static function update(int $id, array $d): void
     {
         Database::run(
-            "UPDATE gigs SET category_id = ?, title = ?, description = ?, budget = ?, location = ?, deadline = ?
+            "UPDATE gigs SET category_id = ?, title = ?, description = ?, requirements = ?, budget = ?, location = ?, deadline = ?
              WHERE id = ? AND status = 'open'",
-            [$d['category_id'], $d['title'], $d['description'], $d['budget'], $d['location'], $d['deadline'], $id]
+            [$d['category_id'], $d['title'], $d['description'], $d['requirements'], $d['budget'], $d['location'], $d['deadline'], $id]
         );
     }
 

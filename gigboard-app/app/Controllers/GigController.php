@@ -2,7 +2,7 @@
 namespace App\Controllers;
 
 use App\Core\{Auth, Session, Url, View};
-use App\Models\{Application, Category, Gig, Submission};
+use App\Models\{Application, ApplicationFile, Category, Gig, Submission};
 
 /**
  * Gigs: browse and search (UC05), view, post (UC04), edit and cancel (FR08).
@@ -57,6 +57,10 @@ class GigController
             abort(404, 'Gig not found');
         }
 
+        $applications  = $isOwner ? Application::forGig($id) : [];
+        $myApplication = $user['role'] === 'freelancer' ? Application::mineFor($id, (int) $user['id']) : null;
+        $appIds = $isOwner ? array_column($applications, 'id') : ($myApplication ? [(int) $myApplication['id']] : []);
+
         View::render('gigs/show', [
             'title'        => $gig['title'],
             'nav'          => $isOwner ? 'mine' : ($user['role'] === 'freelancer' && $isHired ? 'applied' : 'gigs'),
@@ -65,8 +69,9 @@ class GigController
             'isHired'      => $isHired,
             'hired'        => $hired,
             'user'         => $user,
-            'applications' => $isOwner ? Application::forGig($id) : [],
-            'myApplication'=> $user['role'] === 'freelancer' ? Application::mineFor($id, (int) $user['id']) : null,
+            'applications' => $applications,
+            'myApplication'=> $myApplication,
+            'appFiles'     => ApplicationFile::groupedFor($appIds),
             'submissions'  => ($isOwner || $isHired) ? Submission::forGig($id) : [],
         ]);
     }
@@ -173,7 +178,7 @@ class GigController
     private function formInput(array $in): array
     {
         $out = [];
-        foreach (['title', 'description', 'category_id', 'budget', 'location', 'deadline'] as $k) {
+        foreach (['title', 'description', 'requirements', 'category_id', 'budget', 'location', 'deadline'] as $k) {
             $out[$k] = $this->text($in, $k);
         }
         return $out;
@@ -184,6 +189,7 @@ class GigController
     {
         $title       = $this->text($in, 'title');
         $description = $this->text($in, 'description');
+        $requirements = $this->text($in, 'requirements');
         $categoryId  = (int) $this->text($in, 'category_id');
         $budgetRaw   = str_replace(',', '', $this->text($in, 'budget'));
         $location    = $this->text($in, 'location') ?: 'Remote';
@@ -194,6 +200,7 @@ class GigController
         if (mb_strlen($title) < 5 || mb_strlen($title) > 150)           return $fail('The title must be 5 to 150 characters.');
         if (mb_strlen($description) < 20)                                return $fail('Describe the gig in at least 20 characters so freelancers know what to do.');
         if (mb_strlen($description) > 5000)                              return $fail('The description is too long (5000 characters at most).');
+        if (mb_strlen($requirements) > 1500)                             return $fail('The requirements are too long (1500 characters at most).');
         if (!Category::exists($categoryId))                              return $fail('Choose a category.');
         if (!is_numeric($budgetRaw) || $budgetRaw < 100 || $budgetRaw > 1000000) return $fail('The budget must be between KES 100 and KES 1,000,000.');
         if (mb_strlen($location) > 100)                                  return $fail('The location is too long.');
@@ -207,7 +214,7 @@ class GigController
         }
 
         return [[
-            'title' => $title, 'description' => $description, 'category_id' => $categoryId,
+            'title' => $title, 'description' => $description, 'requirements' => $requirements !== '' ? $requirements : null, 'category_id' => $categoryId,
             'budget' => round((float) $budgetRaw, 2), 'location' => $location, 'deadline' => $deadline,
         ], null];
     }

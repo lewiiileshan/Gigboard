@@ -91,4 +91,27 @@ class FileStore
 
         return [['original_name' => $original, 'stored_name' => $stored, 'mime' => $mime, 'size_bytes' => (int) $file['size']], null];
     }
+
+    /** Remove saved files again (used when a later step fails, so no orphan files stay on disk). */
+    public static function delete(string $storedName): void
+    {
+        $path = self::path($storedName);
+        if ($path !== null && is_file($path)) @unlink($path);
+    }
+
+    /** Send a stored file to the browser as a forced download. The caller must have checked permission first. */
+    public static function send(array $row): never
+    {
+        $path = self::path($row['stored_name']);
+        if ($path === null || !is_file($path)) abort(404, 'File not found');
+
+        $name = str_replace(['"', "\r", "\n"], '_', $row['original_name']);
+        header('Content-Type: application/octet-stream');
+        header('Content-Length: ' . filesize($path));
+        header('Content-Disposition: attachment; filename="' . $name . '"; filename*=UTF-8\'\'' . rawurlencode($row['original_name']));
+        header('X-Content-Type-Options: nosniff');
+        header('Cache-Control: private, no-store');
+        readfile($path);
+        exit;
+    }
 }

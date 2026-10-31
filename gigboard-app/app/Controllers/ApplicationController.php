@@ -1,8 +1,8 @@
 <?php
 namespace App\Controllers;
 
-use App\Core\{Auth, Session, Url, View};
-use App\Models\{Application, Gig};
+use App\Core\{Auth, FileStore, Session, Url, View};
+use App\Models\{Application, ApplicationFile, Gig};
 
 /** Applying for gigs (freelancer) and hiring (client). */
 class ApplicationController
@@ -12,6 +12,12 @@ class ApplicationController
     {
         $user = Auth::requireRole('freelancer');
         $gig  = Gig::find($gigId) ?? abort(404, 'Gig not found');
+
+        // A request bigger than the server limit arrives as an empty form; say so instead of "invalid token".
+        if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+            Session::flash('error', 'Those files are too large. Each file can be 10 MB at most.');
+            Url::redirect('/gigs/' . $gigId);
+        }
         Session::checkCsrf();
 
         if ($gig['status'] !== 'open') abort(403, 'This gig is no longer open.');
@@ -32,7 +38,36 @@ class ApplicationController
             Url::redirect($back);
         }
 
-        Application::create($gigId, (int) $user['id'], $proposal, round((float) $priceRaw, 2));
+        // Qualification files: up to 3 slots, each with a title. Check and save them all, or none.
+        $saved = [];
+        for ($i = 1; $i <= ApplicationFile::MAX_PER_APPLICATION; $i++) {
+            $file  = $_FILES['qual_file_' . $i] ?? null;
+            $title = is_string($_POST['qual_title_' . $i] ?? null) ? trim($_POST['qual_title_' . $i]) : '';
+            $none  = !$file || ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE;
+
+            if ($none && $title === '') continue;
+            $fail = null;
+            if ($none)                                          $fail = 'Choose a file for "' . $title . '", or clear its title.';
+            elseif (mb_strlen($title) < 3 || mb_strlen($title) > 80) $fail = 'Give each qualification file a title of 3 to 80 characters.';
+            else {
+                [$info, $err] = FileStore::save($file);
+                if ($err) $fail = $err; else $saved[] = [$title, $info];
+            }
+            if ($fail) {
+                foreach ($saved as [, $f]) FileStore::delete($f['stored_name']);
+                Session::keepOld(['proposal' => $proposal, 'price' => (string) ($_POST['price'] ?? '')]);
+                Session::flash('error', $fail . ' (Please choose your files again.)');
+                Url::redirect($back);
+            }
+        }
+
+        try {
+            $appId = Application::create($gigId, (int) $user['id'], $proposal, round((float) $priceRaw, 2));
+            foreach ($saved as [$title, $info]) ApplicationFile::create($appId, (int) $user['id'], $title, $info);
+        } catch (\Throwable $e) {
+            foreach ($saved as [, $f]) FileStore::delete($f['stored_name']);
+            throw $e;
+        }
         Session::clearOld();
         Session::flash('success', 'Application sent. The client will see it.');
         Url::redirect($back);

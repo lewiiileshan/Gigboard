@@ -73,3 +73,13 @@ How the files are kept private:
 On XAMPP, the default PHP upload limit (`upload_max_filesize`, 40M) is higher than the app's 10 MB limit, so no change is needed.
 
 Tests: `bash tests/delivery_test.sh` (51 checks) alongside `smoke.sh` and `gigs_test.sh`.
+
+## Step 5: requirements and qualification files
+
+- When posting (or editing) a gig, the **client** can write **requirements** for applicants, for example "Diploma in graphic design and a portfolio". They show on the gig page.
+- When applying, the **freelancer** can attach up to **3 qualification files**, each with a title (certificate, CV, portfolio sample). Same allowed types and 10 MB limit as delivered work.
+- The client sees each applicant's files next to their proposal and price, and uses them to decide whom to hire.
+- The files are private, stored like delivered work. Only the freelancer who uploaded them and the client of that gig can download them (`QualificationController`). Everyone else gets "not found".
+- If any file fails the checks, nothing is saved: no application and no leftover files.
+
+Database change: `gigs.requirements` and the new `application_files` table (both in `database/schema.sql`). Tests: `bash tests/qualifications_test.sh` (28 checks).

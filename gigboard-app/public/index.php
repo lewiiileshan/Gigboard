@@ -13,7 +13,7 @@ spl_autoload_register(function (string $class): void {
 });
 require dirname(__DIR__) . '/app/Core/helpers.php';
 
-use App\Controllers\{AccountController, ApplicationController, AuthController, DashboardController, GigController, HomeController, SubmissionController};
+use App\Controllers\{AccountController, ApplicationController, AuthController, DashboardController, GigController, HomeController, QualificationController, SubmissionController};
 use App\Core\{Router, Session};
 
 date_default_timezone_set('Africa/Nairobi');
@@ -43,6 +43,7 @@ $router->get('/my-gigs',             [GigController::class, 'mine']);
 $router->post('/gigs/{id}/apply',           [ApplicationController::class, 'apply']);
 $router->post('/applications/{id}/hire',    [ApplicationController::class, 'hire']);
 $router->get('/my-applications',            [ApplicationController::class, 'mine']);
+$router->get('/qualifications/{id}/download', [QualificationController::class, 'download']);
 $router->post('/gigs/{id}/submit',          [SubmissionController::class,  'store']);
 $router->get('/submissions/{id}/download',  [SubmissionController::class,  'download']);
 $router->post('/submissions/{id}/approve',  [SubmissionController::class,  'approve']);

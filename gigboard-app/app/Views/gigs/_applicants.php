@@ -11,6 +11,7 @@
         </div>
         <p class="muted small" style="margin:2px 0 8px"><?= e(time_ago($a['created_at'])) ?></p>
         <p class="desc"><?= e($a['proposal']) ?></p>
+        <?php $files = $appFiles[(int) $a['id']] ?? []; require __DIR__ . '/_files.php'; ?>
         <?php if ($a['status'] === 'pending'): ?>
           <form method="post" action="<?= url('/applications/' . (int) $a['id'] . '/hire') ?>"
                 onsubmit="return confirm('Hire <?= e(addslashes($a['freelancer_name'])) ?> for this gig? Other applicants will be declined.')">

@@ -229,3 +229,12 @@ footer.site-footer { text-align: center; color: var(--muted); padding: 36px 16px
 .section-title { margin: 22px 2px 10px; font-size: 16px; }
 .file-name { overflow-wrap: anywhere; }
 input[type=file] { padding: 10px; background: var(--card); }
+
+/* qualification files */
+.quals { margin-top: 12px; }
+.qual-row { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 12px; background: var(--bg); color: inherit; margin-top: 6px; }
+.qual-row .ic:last-child { margin-left: auto; color: var(--muted); flex: none; }
+.qual-ico { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: #fff; color: var(--navy); flex: none; }
+.qual-text { display: flex; flex-direction: column; min-width: 0; overflow-wrap: anywhere; }
+.qual-slot { padding-top: 6px; }
+.qual-slot + .qual-slot { border-top: 1px solid var(--border); margin-top: 10px; }
