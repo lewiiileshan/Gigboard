@@ -1,0 +1,145 @@
+-- GigBoard KE: MySQL schema (3NF)
+CREATE DATABASE IF NOT EXISTS gigboard CHARACTER SET utf8mb4;
+USE gigboard;
+
+CREATE TABLE users (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(150) NOT NULL UNIQUE,
+  phone VARCHAR(20),
+  password_hash VARCHAR(255) NOT NULL,          -- bcrypt via password_hash()
+  role ENUM('client','freelancer','admin') NOT NULL,
+  suspended TINYINT(1) NOT NULL DEFAULT 0,       -- 1 = an admin has suspended this account
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE freelancer_profiles (
+  user_id INT PRIMARY KEY,
+  headline VARCHAR(80), town VARCHAR(100),
+  bio TEXT, skills VARCHAR(255), hourly_rate DECIMAL(10,2), portfolio_url VARCHAR(255),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE TABLE categories (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(60) NOT NULL UNIQUE
+);
+
+CREATE TABLE gigs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  client_id INT NOT NULL,
+  category_id INT NOT NULL,
+  title VARCHAR(150) NOT NULL,
+  description TEXT NOT NULL,
+  requirements TEXT,                            -- what an applicant must have (set by the client)
+  budget DECIMAL(10,2) NOT NULL,                -- KES
+  location VARCHAR(100) DEFAULT 'Remote',
+  deadline DATE,
+  status ENUM('open','in_progress','completed','cancelled') DEFAULT 'open',
+  removal_reason VARCHAR(255),                  -- set when an admin removes the gig
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (client_id) REFERENCES users(id),
+  FOREIGN KEY (category_id) REFERENCES categories(id),
+  INDEX (status, category_id)
+);
+
+CREATE TABLE applications (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  gig_id INT NOT NULL,
+  freelancer_id INT NOT NULL,
+  proposal TEXT NOT NULL,
+  proposed_price DECIMAL(10,2) NOT NULL,
+  status ENUM('pending','accepted','rejected','withdrawn') DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (gig_id, freelancer_id),               -- one application per gig
+  FOREIGN KEY (gig_id) REFERENCES gigs(id) ON DELETE CASCADE,
+  FOREIGN KEY (freelancer_id) REFERENCES users(id)
+);
+
+CREATE TABLE application_files (                -- qualification proof attached to an application (private files)
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  application_id INT NOT NULL,
+  freelancer_id INT NOT NULL,
+  title VARCHAR(80) NOT NULL,                    -- e.g. "Diploma in Graphic Design"
+  original_name VARCHAR(150) NOT NULL,
+  stored_name CHAR(32) NOT NULL UNIQUE,          -- random name in storage/deliveries/, never a URL
+  mime VARCHAR(100) NOT NULL,
+  size_bytes INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (application_id) REFERENCES applications(id) ON DELETE CASCADE,
+  FOREIGN KEY (freelancer_id) REFERENCES users(id),
+  INDEX (application_id)
+);
+
+CREATE TABLE payments (                          -- tracking only, no processing
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  gig_id INT NOT NULL UNIQUE,
+  amount DECIMAL(10,2) NOT NULL,
+  status ENUM('pending','paid','confirmed','disputed') DEFAULT 'pending',  -- pending -> paid (client) -> confirmed (freelancer)
+  reference VARCHAR(50),                         -- optional M-Pesa code typed by the client
+  paid_at TIMESTAMP NULL,
+  confirmed_at TIMESTAMP NULL,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (gig_id) REFERENCES gigs(id) ON DELETE CASCADE
+);
+
+CREATE TABLE submissions (                       -- work delivered by the hired freelancer (private files)
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  gig_id INT NOT NULL,
+  freelancer_id INT NOT NULL,
+  note TEXT,                                     -- message to the client
+  original_name VARCHAR(150) NOT NULL,           -- name shown to the user
+  stored_name CHAR(32) NOT NULL UNIQUE,          -- random name on disk (storage/deliveries/), never a URL
+  mime VARCHAR(100) NOT NULL,
+  size_bytes INT NOT NULL,
+  status ENUM('submitted','approved','changes_requested') DEFAULT 'submitted',
+  client_feedback TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  reviewed_at TIMESTAMP NULL,
+  FOREIGN KEY (gig_id) REFERENCES gigs(id) ON DELETE CASCADE,
+  FOREIGN KEY (freelancer_id) REFERENCES users(id),
+  INDEX (gig_id)
+);
+
+CREATE TABLE reviews (                           -- two-way, revealed when both submitted
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  gig_id INT NOT NULL,
+  reviewer_id INT NOT NULL,
+  reviewee_id INT NOT NULL,
+  rating TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment VARCHAR(500),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (gig_id, reviewer_id),
+  FOREIGN KEY (gig_id) REFERENCES gigs(id) ON DELETE CASCADE,
+  FOREIGN KEY (reviewer_id) REFERENCES users(id),
+  FOREIGN KEY (reviewee_id) REFERENCES users(id)
+);
+
+INSERT INTO categories (name) VALUES
+('Graphic Design'),('Writing & Translation'),('Data Entry'),
+('Photo & Video'),('Web & Software'),('Social Media'),('Errands & Delivery');
+
+CREATE TABLE reviews (                           -- two-way ratings after a gig is completed
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  gig_id INT NOT NULL,
+  reviewer_id INT NOT NULL,                      -- who wrote it
+  reviewee_id INT NOT NULL,                      -- who is being rated
+  rating TINYINT NOT NULL,                       -- 1 to 5
+  comment VARCHAR(500),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY one_review_each (gig_id, reviewer_id),   -- each person reviews a gig only once
+  FOREIGN KEY (gig_id) REFERENCES gigs(id) ON DELETE CASCADE,
+  FOREIGN KEY (reviewer_id) REFERENCES users(id),
+  FOREIGN KEY (reviewee_id) REFERENCES users(id)
+);
+
+CREATE TABLE admin_actions (                     -- who did what, kept for accountability
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  admin_id INT NOT NULL,
+  action VARCHAR(40) NOT NULL,                   -- suspend_user, restore_user, remove_gig
+  target_type VARCHAR(20) NOT NULL,              -- user or gig
+  target_id INT NOT NULL,
+  detail VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (admin_id) REFERENCES users(id)
+);

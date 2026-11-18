@@ -1,0 +1,33 @@
+<h3 class="section-title">Applicants (<?= count($applications) ?>)</h3>
+<?php if (!$applications): ?>
+  <div class="empty" style="padding:24px 12px"><span class="ico"><?= icon("clock") ?></span>No applications yet. Freelancers will appear here.</div>
+<?php else: ?>
+  <div class="stack">
+    <?php foreach ($applications as $a): ?>
+      <div class="card">
+        <div class="row">
+          <strong><?= e($a['freelancer_name']) ?></strong>
+          <span class="price"><?= e(kes($a['proposed_price'])) ?></span>
+        </div>
+        <?php $pr = $profiles[(int) $a['freelancer_id']] ?? []; ?>
+        <?php if (!empty($pr['headline'])): ?><p style="margin:2px 0 4px;font-weight:600"><?= e($pr['headline']) ?></p><?php endif; ?>
+        <p class="muted small" style="margin:2px 0 8px"><?= e(time_ago($a['created_at'])) ?><?= !empty($pr['town']) ? ' · ' . e($pr['town']) : '' ?>
+          · <a href="<?= url('/freelancers/' . (int) $a['freelancer_id']) ?>">View profile</a></p>
+        <?php if (!empty($pr['skills'])): ?>
+          <div class="chips tight" style="justify-content:flex-start;margin:0 0 10px">
+            <?php foreach (\App\Models\FreelancerProfile::skillList($pr['skills']) as $sk): ?><span class="chip"><?= e($sk) ?></span><?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+        <p class="desc"><?= e($a['proposal']) ?></p>
+        <?php $files = $appFiles[(int) $a['id']] ?? []; require __DIR__ . '/_files.php'; ?>
+        <?php if ($a['status'] === 'pending'): ?>
+          <form style="margin-top:14px" method="post" action="<?= url('/applications/' . (int) $a['id'] . '/hire') ?>"
+                data-confirm-title="Hire <?= e($a['freelancer_name']) ?> for this gig?" data-confirm-text="Other applicants will be declined." data-confirm-action="Hire <?= e($a['freelancer_name']) ?>" data-confirm-tone="primary">
+            <?= csrf_field() ?>
+            <button class="btn block" type="submit">Hire <?= e($a['freelancer_name']) ?></button>
+          </form>
+        <?php endif; ?>
+      </div>
+    <?php endforeach; ?>
+  </div>
+<?php endif; ?>
