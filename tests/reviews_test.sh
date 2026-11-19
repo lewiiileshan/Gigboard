@@ -4,8 +4,7 @@
 cd "$(dirname "$0")/.." || exit 1
 DB=$(mktemp -u /tmp/gb_rev_XXXX.sqlite); PORT=8090; B=http://127.0.0.1:$PORT
 C=$(mktemp); C2=$(mktemp); C3=$(mktemp); F=$(mktemp); F2=$(mktemp); W=$(mktemp -d)
-php -r '$p=new PDO("sqlite:'$DB'");$p->exec(file_get_contents("tests/sqlite_schema.sql"));'
-export GB_DB_DSN="sqlite:$DB" GB_DB_USER="" GB_DB_PASS=""
+. tests/db_setup.sh
 php -S 127.0.0.1:$PORT -t public tests/dev-router.php >/dev/null 2>&1 & PID=$!
 trap 'kill $PID 2>/dev/null; rm -rf $W' EXIT; sleep 1
 pass=0; fail=0
@@ -15,7 +14,7 @@ status(){ local j=$1; shift; curl -s -o /dev/null -w "%{http_code}" -b $j -c $j 
 loc(){ local j=$1; shift; curl -s -o /dev/null -w "%{redirect_url}" -b $j -c $j "$@"; }
 page(){ curl -s -b $1 -c $1 "$B$2"; }
 has(){ if grep -qF -- "$1" <<< "$2"; then echo yes; else echo no; fi; }
-sql(){ php -r '$p=new PDO("sqlite:'$DB'");echo $p->query("'"$1"'")->fetchColumn();'; }
+sql(){ php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");$r=$p->query("'"$1"'")->fetch(PDO::FETCH_NUM);echo $r?implode("|",$r):"";'; }
 post(){ local j=$1 path=$2; shift 2; local t; t=$(tok $j /account); status $j -X POST "$B$path" --data-urlencode "_csrf=$t" "$@"; }
 upload(){ local j=$1 path=$2 file=$3 name=$4; local t; t=$(tok $j /account); status $j -X POST "$B$path" -F "_csrf=$t" -F "note=done" -F "work=@$file;filename=$name"; }
 reg(){ local j=$1; shift; local t; t=$(tok $j /register); status $j -X POST $B/register --data-urlencode "_csrf=$t" -d "$1" >/dev/null; }
@@ -67,14 +66,14 @@ check "error message is shown"                        "$(has 'too long' "$(page 
 
 # saving
 post $C /gigs/1/review -d 'rating=5&comment=Great work, very fast.' >/dev/null
-check "client review saved for the freelancer"        "$(sql 'select reviewer_id||char(62)||reviewee_id||char(32)||rating from reviews')" "1>3 5"
+check "client review saved for the freelancer"        "$(sql 'select reviewer_id, reviewee_id, rating from reviews')" "1|3|5"
 check "client cannot review twice"                    "$(post $C /gigs/1/review -d 'rating=1' >/dev/null; sql 'select count(*) from reviews')" "1"
 check "first rating was not overwritten"              "$(sql 'select rating from reviews')" "5"
 check "form is gone after reviewing"                  "$(has 'Save review' "$(page $C /gigs/1)")" "no"
 check "client sees thanks and own review"             "$(has 'Your review' "$(page $C /gigs/1)")/$(has 'Great work, very fast.' "$(page $C /gigs/1)")" "yes/yes"
 check "freelancer sees the client's review"           "$(has 'Client One' "$(page $F /gigs/1)")/$(has 'Great work, very fast.' "$(page $F /gigs/1)")" "yes/yes"
 post $F /gigs/1/review -d 'rating=4' >/dev/null
-check "freelancer review saved, comment optional"     "$(sql 'select reviewer_id||char(62)||reviewee_id||char(32)||rating from reviews where reviewer_id=3')" "3>1 4"
+check "freelancer review saved, comment optional"     "$(sql 'select reviewer_id, reviewee_id, rating from reviews where reviewer_id=3')" "3|1|4"
 check "two reviews on the gig"                        "$(sql 'select count(*) from reviews where gig_id=1')" "2"
 
 # escaping
@@ -94,5 +93,5 @@ check "gig page shows the client's rating"            "$(has '4.0' "$(page $F /g
 check "profile without reviews says none yet"         "$(has 'No reviews yet' "$(page $F2 /freelancers/4)")" "yes"
 check "reviews stay private to allowed viewers"       "$(status $C3 $B/freelancers/3)" "404"
 
-for s in $(php -r '$p=new PDO("sqlite:'$DB'");foreach($p->query("select stored_name from submissions") as $r) echo $r[0]," ";'); do rm -f storage/deliveries/$s; done
+for s in $(php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");foreach($p->query("select stored_name from submissions") as $r) echo $r[0]," ";'); do rm -f storage/deliveries/$s; done
 echo; echo "$pass passed, $fail failed"; [ $fail -eq 0 ]

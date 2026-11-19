@@ -4,8 +4,7 @@
 cd "$(dirname "$0")/.." || exit 1
 DB=$(mktemp -u /tmp/gb_del_XXXX.sqlite); PORT=8096; B=http://127.0.0.1:$PORT
 C=$(mktemp); C2=$(mktemp); F=$(mktemp); F2=$(mktemp); W=$(mktemp -d)
-php -r '$p=new PDO("sqlite:'$DB'");$p->exec(file_get_contents("tests/sqlite_schema.sql"));'
-export GB_DB_DSN="sqlite:$DB" GB_DB_USER="" GB_DB_PASS=""
+. tests/db_setup.sh
 BEFORE=$(ls storage/deliveries | grep -vc '^\.gitkeep$')
 php -S 127.0.0.1:$PORT -t public tests/dev-router.php >/dev/null 2>&1 & PID=$!
 trap 'kill $PID 2>/dev/null; rm -rf $W' EXIT; sleep 1
@@ -48,8 +47,8 @@ check "freelancer cannot hire (403)"                   "$(post $F /applications/
 check "client hires freelancer one"                    "$(post $C /applications/1/hire)" "302"
 check "gig is now in progress"                         "$(has 'In progress' "$(page $C /gigs/1)")" "yes"
 check "hiring again is refused (403)"                  "$(post $C /applications/2/hire)" "403"
-check "payment record created with the agreed price"   "$(php -r '$p=new PDO("sqlite:'$DB'");echo $p->query("select amount from payments where gig_id=1")->fetchColumn();')" "2500"
-check "other applicant was declined"                   "$(php -r '$p=new PDO("sqlite:'$DB'");echo $p->query("select status from applications where id=2")->fetchColumn();')" "rejected"
+check "payment record created with the agreed price"   "$(php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");echo $p->query("select cast(amount as integer) from payments where gig_id=1")->fetchColumn();')" "2500"
+check "other applicant was declined"                   "$(php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");echo $p->query("select status from applications where id=2")->fetchColumn();')" "rejected"
 check "declined freelancer can no longer open the gig" "$(status $F2 $B/gigs/1)" "404"
 check "nobody can apply to a gig in progress (403)"    "$(post $F2 /gigs/1/apply -d 'proposal=I have five years of logo design experience&price=2800')" "403"
 
@@ -69,11 +68,11 @@ upload $F /gigs/1/submit $W/empty.txt empty.txt >/dev/null
 check "empty file is refused"                          "$(has 'file is empty' "$(page $F /gigs/1)")" "yes"
 upload $F /gigs/1/submit $W/big.zip big.zip >/dev/null
 check "file over 10 MB is refused"                     "$(has 'too large' "$(page $F /gigs/1)")" "yes"
-check "nothing was saved from the bad uploads"         "$(php -r '$p=new PDO("sqlite:'$DB'");echo $p->query("select count(*) from submissions")->fetchColumn();')" "0"
+check "nothing was saved from the bad uploads"         "$(php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");echo $p->query("select count(*) from submissions")->fetchColumn();')" "0"
 check "valid file is accepted"                         "$(upload $F /gigs/1/submit $W/notes.txt '../../etc/notes.txt')" "302"
 check "client sees the delivery"                       "$(has 'notes.txt' "$(page $C /gigs/1)")" "yes"
-check "folder part of the file name was stripped"      "$(php -r '$p=new PDO("sqlite:'$DB'");echo $p->query("select original_name from submissions where id=1")->fetchColumn();')" "notes.txt"
-STORED=$(php -r '$p=new PDO("sqlite:'$DB'");echo $p->query("select stored_name from submissions where id=1")->fetchColumn();')
+check "folder part of the file name was stripped"      "$(php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");echo $p->query("select original_name from submissions where id=1")->fetchColumn();')" "notes.txt"
+STORED=$(php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");echo $p->query("select stored_name from submissions where id=1")->fetchColumn();')
 check "stored under a random 32-character name"        "$(printf '%s' "$STORED" | grep -cE '^[a-f0-9]{32}$')" "1"
 
 # ---- who can download
@@ -105,5 +104,5 @@ check "freelancer lists the gig under My applications" "$(has 'Design a logo' "$
 check "uploaded files exist on disk (2)"               "$(( $(ls storage/deliveries | grep -vc '^\.gitkeep$') - BEFORE ))" "2"
 
 # clean up files this test created
-for s in $(php -r '$p=new PDO("sqlite:'$DB'");foreach($p->query("select stored_name from submissions") as $r) echo $r[0]," ";'); do rm -f storage/deliveries/$s; done
+for s in $(php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");foreach($p->query("select stored_name from submissions") as $r) echo $r[0]," ";'); do rm -f storage/deliveries/$s; done
 echo; echo "$pass passed, $fail failed"; [ $fail -eq 0 ]

@@ -4,8 +4,7 @@
 cd "$(dirname "$0")/.." || exit 1
 DB=$(mktemp -u /tmp/gb_prof_XXXX.sqlite); PORT=8091; B=http://127.0.0.1:$PORT
 C=$(mktemp); C2=$(mktemp); F=$(mktemp); F2=$(mktemp)
-php -r '$p=new PDO("sqlite:'$DB'");$p->exec(file_get_contents("tests/sqlite_schema.sql"));'
-export GB_DB_DSN="sqlite:$DB" GB_DB_USER="" GB_DB_PASS=""
+. tests/db_setup.sh
 php -S 127.0.0.1:$PORT -t public tests/dev-router.php >/dev/null 2>&1 & PID=$!
 trap 'kill $PID 2>/dev/null' EXIT; sleep 1
 pass=0; fail=0
@@ -15,7 +14,7 @@ status(){ local j=$1; shift; curl -s -o /dev/null -w "%{http_code}" -b $j -c $j 
 loc(){ local j=$1; shift; curl -s -o /dev/null -w "%{redirect_url}" -b $j -c $j "$@"; }
 page(){ curl -s -b $1 -c $1 "$B$2"; }
 has(){ if grep -qF -- "$1" <<< "$2"; then echo yes; else echo no; fi; }
-sql(){ php -r '$p=new PDO("sqlite:'$DB'");echo $p->query("'"$1"'")->fetchColumn();'; }
+sql(){ php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");$r=$p->query("'"$1"'")->fetch(PDO::FETCH_NUM);echo $r?implode("|",$r):"";'; }
 # save profile: $1 jar, rest = curl --data-urlencode pairs
 save(){ local j=$1; shift; local t; t=$(tok $j /account/edit); local args=(); for kv in "$@"; do args+=(--data-urlencode "$kv"); done; status $j -X POST $B/account/edit --data-urlencode "_csrf=$t" "${args[@]}"; }
 reg(){ local j=$1; shift; local t; t=$(tok $j /register); status $j -X POST $B/register --data-urlencode "_csrf=$t" -d "$1" >/dev/null; }

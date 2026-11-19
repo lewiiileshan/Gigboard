@@ -3,8 +3,7 @@
 # Run from the project folder:  bash tests/gigs_test.sh      (needs php + curl; uses a temporary SQLite database)
 cd "$(dirname "$0")/.." || exit 1
 DB=$(mktemp -u /tmp/gb_gigs_XXXX.sqlite); PORT=8097; B=http://127.0.0.1:$PORT; C=$(mktemp); F=$(mktemp)
-php -r '$p=new PDO("sqlite:'$DB'");$p->exec(file_get_contents("tests/sqlite_schema.sql"));'
-export GB_DB_DSN="sqlite:$DB" GB_DB_USER="" GB_DB_PASS=""
+. tests/db_setup.sh
 php -S 127.0.0.1:$PORT -t public tests/dev-router.php >/dev/null 2>&1 & PID=$!; sleep 1
 pass=0; fail=0
 check(){ if [ "$2" = "$3" ]; then echo "PASS  $1"; pass=$((pass+1)); else echo "FAIL  $1 (expected '$3', got '$2')"; fail=$((fail+1)); fi; }

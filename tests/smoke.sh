@@ -3,8 +3,7 @@
 # Run from the project folder:  bash tests/smoke.sh      (needs php and curl; no MySQL required)
 cd "$(dirname "$0")/.." || exit 1
 DB=$(mktemp -u /tmp/gb_smoke_XXXX.sqlite); PORT=8099; B=http://127.0.0.1:$PORT; J=$(mktemp)
-php -r '$p=new PDO("sqlite:'$DB'");$p->exec(file_get_contents("tests/sqlite_schema.sql"));'
-export GB_DB_DSN="sqlite:$DB" GB_DB_USER="" GB_DB_PASS=""
+. tests/db_setup.sh
 php -S 127.0.0.1:$PORT -t public tests/dev-router.php >/dev/null 2>&1 & PID=$!; sleep 1
 pass=0; fail=0
 check(){ if [ "$2" = "$3" ]; then echo "PASS  $1"; pass=$((pass+1)); else echo "FAIL  $1 (expected '$3', got '$2')"; fail=$((fail+1)); fi; }
@@ -22,7 +21,7 @@ reg "name=Amina&email=amina@example.com&role=client&password=longpassword1&confi
 check "terms of service are required"                 "$(page /register | grep -c 'Accept the terms of service')" "1"
 check "valid registration goes to dashboard"          "$(reg 'name=Amina&email=amina@example.com&role=client&password=longpassword1&confirm=longpassword1&terms=1')" "$B/dashboard"
 check "dashboard greets the new user"                 "$(page /dashboard | grep -c 'Welcome back')" "1"
-check "password stored as bcrypt hash"               "$(php -r '$p=new PDO("sqlite:'$DB'");echo substr($p->query("select password_hash from users")->fetchColumn(),0,4);')" '$2y$'
+check "password stored as bcrypt hash"               "$(php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");echo substr($p->query("select password_hash from users")->fetchColumn(),0,4);')" '$2y$'
 T=$(page /account | grep -o 'name="_csrf" value="[^"]*"' | head -1 | sed 's/.*value="//;s/"//')
 check "logout redirects to login"                     "$(loc -X POST $B/logout --data-urlencode "_csrf=$T")" "$B/login"
 check "logout message is shown"                       "$(page /login | grep -c 'Logged out')" "1"

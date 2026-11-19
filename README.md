@@ -119,3 +119,24 @@ On the next login that person lands on the admin overview. The schema changed in
 ## Front-end behaviour (Phase 10)
 
 `public/js/app.js` adds a confirmation window for risky actions (forms with `data-confirm-*` attributes), blur-first field checking (`data-validate`), saved drafts (`data-draft`) and a double-submit guard. All forms still work without JavaScript; the server checks everything again.
+
+## Checking your setup, and fixing an HTTP 500
+
+HTTP 500 almost always means PHP could not start the page. Run this in the project folder and follow what it says:
+
+    php bin/check-setup.php
+
+It checks the PHP version and extensions, that `storage/` is writable, that it can reach the database, and that all tables exist. The most common cause on Ubuntu is that MariaDB's `root` user uses socket login and has no password for PHP, so create a normal user:
+
+    sudo mysql -e "CREATE USER 'gigboard'@'localhost' IDENTIFIED BY 'yourpassword'; GRANT ALL ON gigboard.* TO 'gigboard'@'localhost';"
+    cp config/config.local.example.php config/config.local.php
+
+Then edit `config/config.local.php` with that user and password. That file is ignored by git. If the checker says everything is fine but the page still fails, read the web server log: `sudo tail -n 15 /var/log/apache2/error.log`.
+
+## Running the tests on MySQL
+
+The tests use a throw-away SQLite file by default. To run them on a real MySQL or MariaDB server, create a user that may use a database called `gigboard_test`, then:
+
+    GB_TEST_MYSQL=1 GB_MY_USER=gb GB_MY_PASS=gbpass bash tests/smoke.sh
+
+The same variables work for every script in `tests/`. All 293 checks pass on both.

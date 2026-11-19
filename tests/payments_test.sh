@@ -4,8 +4,7 @@
 cd "$(dirname "$0")/.." || exit 1
 DB=$(mktemp -u /tmp/gb_pay_XXXX.sqlite); PORT=8089; B=http://127.0.0.1:$PORT
 C=$(mktemp); C2=$(mktemp); F=$(mktemp); F2=$(mktemp); W=$(mktemp -d)
-php -r '$p=new PDO("sqlite:'$DB'");$p->exec(file_get_contents("tests/sqlite_schema.sql"));'
-export GB_DB_DSN="sqlite:$DB" GB_DB_USER="" GB_DB_PASS=""
+. tests/db_setup.sh
 php -S 127.0.0.1:$PORT -t public tests/dev-router.php >/dev/null 2>&1 & PID=$!
 trap 'kill $PID 2>/dev/null; rm -rf $W' EXIT; sleep 1
 pass=0; fail=0
@@ -15,7 +14,7 @@ status(){ local j=$1; shift; curl -s -o /dev/null -w "%{http_code}" -b $j -c $j 
 loc(){ local j=$1; shift; curl -s -o /dev/null -w "%{redirect_url}" -b $j -c $j "$@"; }
 page(){ curl -s -b $1 -c $1 "$B$2"; }
 has(){ if grep -qF -- "$1" <<< "$2"; then echo yes; else echo no; fi; }
-sql(){ php -r '$p=new PDO("sqlite:'$DB'");echo $p->query("'"$1"'")->fetchColumn();'; }
+sql(){ php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");$r=$p->query("'"$1"'")->fetch(PDO::FETCH_NUM);echo $r?implode("|",$r):"";'; }
 post(){ local j=$1 path=$2; shift 2; local t; t=$(tok $j /account); status $j -X POST "$B$path" --data-urlencode "_csrf=$t" "$@"; }
 upload(){ local j=$1 path=$2 file=$3 name=$4; local t; t=$(tok $j /account); status $j -X POST "$B$path" -F "_csrf=$t" -F "note=done" -F "work=@$file;filename=$name"; }
 reg(){ local j=$1; shift; local t; t=$(tok $j /register); status $j -X POST $B/register --data-urlencode "_csrf=$t" -d "$1" >/dev/null; }
@@ -30,7 +29,7 @@ post $F /gigs/1/apply -d 'proposal=I will design three logo options for you&pric
 check "no payment exists before hiring"              "$(sql 'select count(*) from payments')" "0"
 check "payments page is empty before hiring"         "$(has 'No payments yet' "$(page $C /payments)")" "yes"
 post $C /applications/1/hire >/dev/null
-check "hiring creates one pending payment of 2500"   "$(sql "select status||'/'||amount from payments")" "pending/2500.0"
+check "hiring creates one pending payment of 2500"   "$(sql "select status, cast(amount as integer) from payments")" "pending|2500"
 check "both people see it on the Payments page"      "$(has 'Design a logo' "$(page $C /payments)")/$(has 'Design a logo' "$(page $F /payments)")" "yes/yes"
 check "other users do not see it"                    "$(has 'Design a logo' "$(page $C2 /payments)")/$(has 'Design a logo' "$(page $F2 /payments)")" "no/no"
 check "in progress: amount counted as in progress"   "$(has '<div class="num">2,500</div><div class="lbl">In progress' "$(page $C /payments)")" "yes"
@@ -82,5 +81,5 @@ check "gig page says payment complete"               "$(has 'Payment complete' "
 check "confirmed total appears on the Payments page" "$(has '<div class="num">2,500</div><div class="lbl">Confirmed' "$(page $C /payments)")" "yes"
 check "client cannot change a confirmed payment"     "$(post $C /payments/1/paid -d 'reference=ZZZZZZZZZZ' >/dev/null; sql 'select reference from payments')" "AB12CD34EF"
 
-for s in $(php -r '$p=new PDO("sqlite:'$DB'");foreach($p->query("select stored_name from submissions") as $r) echo $r[0]," ";'); do rm -f storage/deliveries/$s; done
+for s in $(php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");foreach($p->query("select stored_name from submissions") as $r) echo $r[0]," ";'); do rm -f storage/deliveries/$s; done
 echo; echo "$pass passed, $fail failed"; [ $fail -eq 0 ]

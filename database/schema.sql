@@ -101,20 +101,6 @@ CREATE TABLE submissions (                       -- work delivered by the hired 
   INDEX (gig_id)
 );
 
-CREATE TABLE reviews (                           -- two-way, revealed when both submitted
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  gig_id INT NOT NULL,
-  reviewer_id INT NOT NULL,
-  reviewee_id INT NOT NULL,
-  rating TINYINT NOT NULL CHECK (rating BETWEEN 1 AND 5),
-  comment VARCHAR(500),
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE (gig_id, reviewer_id),
-  FOREIGN KEY (gig_id) REFERENCES gigs(id) ON DELETE CASCADE,
-  FOREIGN KEY (reviewer_id) REFERENCES users(id),
-  FOREIGN KEY (reviewee_id) REFERENCES users(id)
-);
-
 INSERT INTO categories (name) VALUES
 ('Graphic Design'),('Writing & Translation'),('Data Entry'),
 ('Photo & Video'),('Web & Software'),('Social Media'),('Errands & Delivery');

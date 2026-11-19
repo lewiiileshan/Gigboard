@@ -4,8 +4,7 @@
 cd "$(dirname "$0")/.." || exit 1
 DB=$(mktemp -u /tmp/gb_adm_XXXX.sqlite); PORT=8091; B=http://127.0.0.1:$PORT
 C=$(mktemp); C2=$(mktemp); A=$(mktemp); F=$(mktemp); F2=$(mktemp); W=$(mktemp -d)
-php -r '$p=new PDO("sqlite:'$DB'");$p->exec(file_get_contents("tests/sqlite_schema.sql"));'
-export GB_DB_DSN="sqlite:$DB" GB_DB_USER="" GB_DB_PASS=""
+. tests/db_setup.sh
 php -S 127.0.0.1:$PORT -t public tests/dev-router.php >/dev/null 2>&1 & PID=$!
 trap 'kill $PID 2>/dev/null; rm -rf $W' EXIT; sleep 1
 pass=0; fail=0
@@ -15,7 +14,7 @@ status(){ local j=$1; shift; curl -s -o /dev/null -w "%{http_code}" -b $j -c $j 
 loc(){ local j=$1; shift; curl -s -o /dev/null -w "%{redirect_url}" -b $j -c $j "$@"; }
 page(){ curl -s -b $1 -c $1 "$B$2"; }
 has(){ if grep -qF -- "$1" <<< "$2"; then echo yes; else echo no; fi; }
-sql(){ php -r '$p=new PDO("sqlite:'$DB'");echo $p->query("'"$1"'")->fetchColumn();'; }
+sql(){ php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");$r=$p->query("'"$1"'")->fetch(PDO::FETCH_NUM);echo $r?implode("|",$r):"";'; }
 post(){ local j=$1 path=$2; shift 2; local t; t=$(tok $j /account); status $j -X POST "$B$path" --data-urlencode "_csrf=$t" "$@"; }
 upload(){ local j=$1 path=$2 file=$3 name=$4; local t; t=$(tok $j /account); status $j -X POST "$B$path" -F "_csrf=$t" -F "note=done" -F "work=@$file;filename=$name"; }
 reg(){ local j=$1; shift; local t; t=$(tok $j /register); status $j -X POST $B/register --data-urlencode "_csrf=$t" -d "$1" >/dev/null; }
@@ -78,7 +77,7 @@ check "admin cannot suspend an admin (403)"           "$(post $A /admin/users/5/
 check "gigs of client One are visible before"         "$(has 'Design a logo' "$(page $F2 /gigs)")" "yes"
 post $C /gigs/1/cancel >/dev/null 2>&1; mk $C "Another open gig"
 check "suspend works"                                 "$(post $A /admin/users/1/suspend >/dev/null; sql 'select suspended from users where id=1')" "1"
-check "suspending is recorded"                        "$(sql "select action||target_id from admin_actions where id=1")" "suspend_user1"
+check "suspending is recorded"                        "$(sql "select action, target_id from admin_actions where id=1")" "suspend_user|1"
 check "suspended client is signed out at once"        "$(loc $C $B/dashboard | sed 's#.*/##')" "login"
 check "login page tells them why"                     "$(has 'has been suspended' "$(page $C /login)")" "yes"
 check "suspended user cannot log in"                  "$(login $C c1@example.com longpassword1 | sed 's#.*/##')" "login"
@@ -97,12 +96,12 @@ check "reason error is shown"                         "$(has 'Give a reason' "$(
 check "gig in progress cannot be removed"             "$(post $A /admin/gigs/2/remove -d 'reason=Looks like spam' >/dev/null; sql "select status from gigs where id=2")" "in_progress"
 check "refusal is explained"                          "$(has 'Only open gigs can be removed' "$(page $A /admin/gigs)")" "yes"
 check "unknown gig gets 404"                          "$(post $A /admin/gigs/999/remove -d 'reason=Looks like spam')" "404"
-check "remove works with a reason"                    "$(post $A /admin/gigs/3/remove -d 'reason=Contains a phone scam' >/dev/null; sql "select status||char(124)||removal_reason from gigs where id=3")" "cancelled|Contains a phone scam"
+check "remove works with a reason"                    "$(post $A /admin/gigs/3/remove -d 'reason=Contains a phone scam' >/dev/null; sql "select status, removal_reason from gigs where id=3")" "cancelled|Contains a phone scam"
 check "removed gig leaves the public list"            "$(has 'Write product text' "$(page $F2 /gigs)")" "no"
 check "freelancer gets 404 for the removed gig"       "$(status $F2 $B/gigs/3)" "404"
 check "owner sees the reason"                         "$(has 'Removed by an administrator' "$(page $C2 /gigs/3)")/$(has 'Contains a phone scam' "$(page $C2 /gigs/3)")" "yes/yes"
 check "admin can open the removed gig"                "$(status $A $B/gigs/3)" "200"
-check "removal is in the log"                         "$(sql "select action||target_id from admin_actions where action='remove_gig'")" "remove_gig3"
+check "removal is in the log"                         "$(sql "select action, target_id from admin_actions where action='remove_gig'")" "remove_gig|3"
 check "reason text is escaped"                        "$(post $A /admin/gigs/4/remove --data-urlencode 'reason=<b>bad</b> gig' >/dev/null; has '<b>bad</b>' "$(page $A /admin/gigs)")" "no"
 check "overview shows recent actions"                 "$(has 'Admin Person' "$(page $A /admin)")/$(has 'removed gig #3' "$(page $A /admin)")" "yes/yes"
 
@@ -110,5 +109,5 @@ check "overview shows recent actions"                 "$(has 'Admin Person' "$(p
 check "admin cannot download delivered files"         "$(status $A $B/submissions/1/download)" "404"
 check "admin cannot see the delivery section"         "$(has 'notes' "$(page $A /gigs/2)")/$(has 'Download file' "$(page $A /gigs/2)")" "no/no"
 
-for s in $(php -r '$p=new PDO("sqlite:'$DB'");foreach($p->query("select stored_name from submissions") as $r) echo $r[0]," ";'); do rm -f storage/deliveries/$s; done
+for s in $(php -r '$p=new PDO("'$DSN'","'$DBU'","'$DBP'");foreach($p->query("select stored_name from submissions") as $r) echo $r[0]," ";'); do rm -f storage/deliveries/$s; done
 echo; echo "$pass passed, $fail failed"; [ $fail -eq 0 ]
